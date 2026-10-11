@@ -1,0 +1,92 @@
+# Python + AI —— 本地依赖编排
+#
+#   docker compose up -d              # 拉起全部
+#   docker compose up -d qdrant       # 只拉向量库（写 RAG 时最常用）
+#   docker compose ps                 # 看状态
+#   docker compose down               # 停止（保留数据卷）
+#   docker compose down -v            # 停止并删除数据卷（数据会清空，需重新 embedding）
+#
+# 端口分配：刻意与 Java 项目（java-ai-rag：6333/6334/6379/3307）错开，
+# 两套环境可同时运行、互不干扰。
+#   Qdrant  6335 (HTTP/REST + Dashboard) / 6336 (gRPC)
+#   Postgres 5432  ← 本机 3306 是 MySQL；PG 没装，5432 空闲
+#   Redis   6380
+
+name: python-ai
+
+services:
+
+  # ─────────────── 向量数据库：RAG 的检索底座 ───────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: pyai-qdrant
+    restart: unless-stopped
+    ports:
+      - "6335:6333"   # REST API + Web Dashboard → http://localhost:6335/dashboard
+      - "6336:6334"   # gRPC（langchain / qdrant-client 可选走这个）
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ─────────────── 关系库：元数据 + 向量扩展 pgvector ───────────────
+  # 同一个库里既能存业务表，也能存 embedding —— 少维护一个中间件
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: pyai-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123456
+      POSTGRES_DB: python_ai
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=100
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # 首次启动自动执行（容器内按文件名顺序跑，只跑一次）
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d python_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ─────────────── 缓存：会话上下文 / 检索结果缓存 / 限流 ───────────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: pyai-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  qdrant_data:
+    name: pyai_qdrant_data
+  pg_data:
+    name: pyai_pg_data
+  redis_data:
+    name: pyai_redis_data

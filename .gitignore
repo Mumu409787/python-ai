@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# 密钥 —— 绝不能进版本库
+.env
+.env.*
+!.env.example
+
+# 本地数据 / 缓存
+.chroma/
+*.sqlite3
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+
+# 面向本机使用者的操作说明（截图路径指向桌面，不适合进版本库）
+docs页面使用说明.md
+验收指南.md
