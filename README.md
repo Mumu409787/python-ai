@@ -1,7 +1,7 @@
 # python-ai
 
-Python + AI 方向的 RAG 检索问答系统。与 Java 项目 [`java-ai-rag`](../java-ai-rag)
-功能对齐，并在其基础上补了 **Rerank 重排** 与 **Ragas 评测** 两块。
+Python + AI 方向的 RAG 检索问答系统。与本地另一个 Java 项目 `java-ai-rag` 功能对齐，
+并在其基础上补了 **Rerank 重排**、**Ragas 评测** 与 **MCP Server** 三块。
 
 ## 技术栈
 
@@ -61,6 +61,60 @@ event: message       data: 裸文本片段          ← 逐 token，不是 JSON
 event: done          data: {"sessionId":"...","costMs":123}
 event: error         data: 中文错误文案
 ```
+
+## MCP Server：把检索能力暴露给任何 AI 客户端
+
+除了 REST 接口，本项目还提供一个 **MCP Server**，让 Claude Code、Cursor、Codex、
+Claude Desktop 等**任何支持 MCP 的客户端直接调用这个知识库**。
+
+| 工具 | 作用 |
+|---|---|
+| `search_knowledge_base` | 语义检索（向量召回 + Rerank），返回最相关的片段 |
+| `list_documents` | 列出知识库里已入库的文档 |
+
+这是对外的**第三种接口**，与 `api/`（REST）、命令行平级。
+它本身**不实现任何检索逻辑** —— 业务逻辑的唯一归属地仍是 `retrieval.py` / `rag.py`，
+这个文件只做「把检索结果翻译成 MCP 工具返回值」这一件事。以后改检索只改下层，这里不用动。
+
+### 本地试跑
+
+```bash
+uv run python -m python_ai.mcp_server
+```
+
+> stdio 传输下，正常表现是「卡住不动」—— 它在等客户端发来的协议帧，**不是坏了**。
+
+### 注册到 Claude Code
+
+编辑 `~/.claude.json`，在 `mcpServers` 里加：
+
+```json
+{
+  "mcpServers": {
+    "python-ai-rag": {
+      "type": "stdio",
+      "command": "D:/Projects/python-ai/.venv/Scripts/python.exe",
+      "args": ["-m", "python_ai.mcp_server"],
+      "env": {}
+    }
+  }
+}
+```
+
+> 用 venv 里的 `python.exe` 而不是 `uv run`，省掉每次启动时 uv 的解析开销。
+> 换机器时把 `command` 换成对方机器上的 venv 路径即可。
+
+注册后重启客户端，就能直接说「查一下我的知识库里……」，它会自动调用这两个工具。
+
+### ⚠️ 一个必须知道的坑
+
+**stdio 传输下绝对不能往 stdout 写任何东西** —— 日志、`print`、警告都不行。
+
+MCP 用 stdout 传协议帧，混进去一行日志就会让客户端解析失败、连接直接断掉。
+
+代码里 `logging.basicConfig` 默认输出到 **stderr**，是安全的；改动时别手滑配成 stdout。
+
+---
 
 ## 与 Java 项目的差异
 
@@ -128,6 +182,7 @@ src/python_ai/
   repository.py   数据访问
   db/             SQLAlchemy 模型与会话
   api/            FastAPI 路由
+  mcp_server.py   MCP Server（把检索能力暴露给 AI 客户端）
   main.py         应用入口与全局异常处理
 
 evaluation/       Ragas 评测集与脚本
@@ -166,9 +221,9 @@ data/samples/     测试语料
 
 ## 下一步
 
+- [x] ~~写一个 MCP Server 暴露知识库检索~~ → **已完成**，见上方「MCP Server」章节
 - [ ] 混合检索（BM25 + 向量，用 `rank_bm25`）
 - [ ] 查询改写（Java 侧有实现但默认关，可直接移植）
 - [ ] 会话记忆接 LangGraph Checkpointer
 - [ ] Langfuse 接入（依赖已装，未接线）
 - [ ] Alembic 迁移替代 `create_all`
-- [ ] 写一个 MCP Server 暴露知识库检索
