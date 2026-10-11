@@ -14,6 +14,7 @@ dependencies = [
     "langchain-openai>=1.6.4",
     "langfuse>=4.15.4",
     "langgraph>=1.2.12",
+    "mcp[cli]>=2.3.0",
     "openai>=3.19.0",
     "pillow>=12.3.0",
     "pydantic-settings>=2.15.0",
