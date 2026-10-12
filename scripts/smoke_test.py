@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 import httpx
 
@@ -28,8 +29,7 @@ def check(name: str, ok: bool, detail: str = "") -> None:
     print(f"  [{mark}] {name}" + (f"  {detail}" if detail else ""))
 
 
-def main() -> int:
-    client = httpx.Client(timeout=120)
+def _run(client: httpx.Client, created: list[int]) -> int:
 
     print("── 服务可达性 ──")
     try:
@@ -45,20 +45,21 @@ def main() -> int:
         str(deps),
     )
 
-    print("\n── 清理历史数据 ──")
-    for doc in client.get(f"{BASE}/api/documents").json().get("data", []):
-        client.delete(f"{BASE}/api/documents/{doc['id']}")
-    check("起始状态为空", client.get(f"{BASE}/api/documents").json()["data"] == [])
+    baseline_ids = {doc["id"] for doc in client.get(f"{BASE}/api/documents").json()["data"]}
 
     print("\n── 上传与去重 ──")
-    with SAMPLE.open("rb") as fh:
-        first = client.post(f"{BASE}/api/documents", files={"file": (SAMPLE.name, fh)}).json()
+    # 独立内容指纹，避免去重命中用户的已有文档后误删。
+    sample_data = SAMPLE.read_bytes() + f"\n\n测试标识：{uuid4()}\n".encode()
+    first = client.post(f"{BASE}/api/documents", files={"file": (SAMPLE.name, sample_data)}).json()
     check("首次上传成功", first["code"] == 0, str(first.get("data")))
+    if first["code"] != 0 or first["data"]["duplicated"]:
+        raise RuntimeError("无法创建独立测试文档，终止验证")
     doc_id = first["data"]["docId"]
+    if not first["data"]["duplicated"]:
+        created.append(doc_id)
     check("切出多个片段", first["data"]["chunkCount"] > 1, f"{first['data']['chunkCount']} 片")
 
-    with SAMPLE.open("rb") as fh:
-        second = client.post(f"{BASE}/api/documents", files={"file": (SAMPLE.name, fh)}).json()
+    second = client.post(f"{BASE}/api/documents", files={"file": (SAMPLE.name, sample_data)}).json()
     check(
         "重复上传被去重（秒传）", second["data"]["duplicated"] and second["data"]["docId"] == doc_id
     )
@@ -115,13 +116,29 @@ def main() -> int:
 
     print("\n── 删除与清理 ──")
     check("删除成功", client.delete(f"{BASE}/api/documents/{doc_id}").json()["code"] == 0)
-    check("列表已为空", client.get(f"{BASE}/api/documents").json()["data"] == [])
+    remaining = {doc["id"] for doc in client.get(f"{BASE}/api/documents").json()["data"]}
+    check("测试文档已删除，原有文档保留", doc_id not in remaining and baseline_ids <= remaining)
 
     print(f"\n{'=' * 60}")
     print(f"通过 {len(passed)} 项，失败 {len(failed)} 项")
     if failed:
         print("失败项：" + ", ".join(failed))
     return 1 if failed else 0
+
+
+def main() -> int:
+    created: list[int] = []
+    passed.clear()
+    failed.clear()
+    with httpx.Client(timeout=120) as client:
+        try:
+            return _run(client, created)
+        finally:
+            for doc_id in created:
+                try:
+                    client.delete(f"{BASE}/api/documents/{doc_id}")
+                except httpx.HTTPError as exc:
+                    print(f"测试文档 {doc_id} 清理失败：{exc}")
 
 
 if __name__ == "__main__":

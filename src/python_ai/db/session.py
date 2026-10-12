@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -17,7 +18,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from ..config import get_settings
-from .models import Base
+from ..errors import BizError, ResultCode
 
 _engine: AsyncEngine | None = None
 _factory: async_sessionmaker[AsyncSession] | None = None
@@ -44,9 +45,11 @@ def session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 async def init_db() -> None:
-    """建表（幂等）。生产环境应该换成 Alembic 迁移，学习项目先这样。"""
+    """只检查迁移版本；修改表结构必须显式运行迁移命令。"""
+    from .migrations import assert_current
+
     async with engine().begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(assert_current)
 
 
 async def dispose_db() -> None:
@@ -71,3 +74,21 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
         except Exception:
             await session.rollback()
             raise
+
+
+@asynccontextmanager
+async def document_lock(content_hash: str) -> AsyncIterator[None]:
+    """跨进程互斥同内容的上传和删除；事务退出自动释放锁。
+
+    使用非阻塞事务锁，避免等待上传的请求耗尽连接池。业务写入仍用独立事务。
+    """
+    key = int.from_bytes(bytes.fromhex(content_hash[:16]), "big", signed=True)
+    async with session_scope() as session:
+        acquired = await session.scalar(
+            text("SELECT pg_try_advisory_xact_lock(:key)"), {"key": key}
+        )
+        if not acquired:
+            raise BizError(
+                ResultCode.DOC_ALREADY_EXISTS, "相同内容的文档正在处理，请稍后重试", retryable=True
+            )
+        yield

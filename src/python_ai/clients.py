@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from functools import lru_cache
 
 from langchain_openai import ChatOpenAI
@@ -16,6 +18,8 @@ from qdrant_client import AsyncQdrantClient
 from redis.asyncio import Redis
 
 from .config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -73,15 +77,34 @@ def qdrant() -> AsyncQdrantClient:
 @lru_cache(maxsize=1)
 def redis_client() -> Redis:
     """Redis 客户端（会话记忆用，DB 0）。"""
-    return Redis.from_url(get_settings().redis_url, decode_responses=True)
+    return Redis.from_url(
+        get_settings().redis_url,
+        decode_responses=True,
+        socket_connect_timeout=3,
+        socket_timeout=3,
+    )
 
 
 async def close_clients() -> None:
     """释放连接。在 FastAPI 的 lifespan 退出阶段调用。"""
-    await qdrant().close()
-    await redis_client().aclose()
-    chat_client.cache_clear()
-    embedding_client.cache_clear()
-    chat_model.cache_clear()
-    qdrant.cache_clear()
-    redis_client.cache_clear()
+    pending = []
+    try:
+        for factory in (chat_client, embedding_client, qdrant):
+            if factory.cache_info().currsize:
+                pending.append(factory().close())
+        if redis_client.cache_info().currsize:
+            pending.append(redis_client().aclose())
+        if chat_model.cache_info().currsize:
+            model = chat_model()
+            pending.append(model.root_async_client.close())
+            try:
+                model.root_client.close()
+            except Exception:
+                logger.exception("关闭同步对话客户端失败")
+        results = await asyncio.gather(*pending, return_exceptions=True)
+        for result in results:
+            if isinstance(result, BaseException):
+                logger.warning("关闭客户端失败：%s", result)
+    finally:
+        for factory in (chat_client, embedding_client, chat_model, qdrant, redis_client):
+            factory.cache_clear()

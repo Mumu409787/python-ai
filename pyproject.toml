@@ -1,10 +1,11 @@
 [project]
 name = "python-ai"
 version = "0.1.0"
-description = "Add your description here"
+description = "RAG knowledge workspace with hybrid retrieval, OCR, persistent conversations and observability"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "alembic>=1.20,<2",
     "asyncpg>=0.32.0",
     "chromadb>=1.5.9",
     "fastapi>=0.141.1",
@@ -12,17 +13,24 @@ dependencies = [
     "langchain>=1.4.2",
     "langchain-community<0.4",
     "langchain-openai>=1.6.4",
+    "langchain-text-splitters>=1.1.2,<2",
     "langfuse>=4.15.4",
     "langgraph>=1.2.12",
+    "langgraph-checkpoint-postgres>=3.1.2,<3.2",
     "mcp[cli]>=2.3.0",
+    "numpy>=2,<3",
     "openai>=3.19.0",
     "pillow>=12.3.0",
+    "psycopg[binary,pool]>=3.3.6,<4",
     "pydantic-settings>=2.15.0",
     "pypdf>=6.20.0",
+    "pypdfium2>=5.14,<6",
+    "pytesseract==0.3.13",
     "python-dotenv>=1.2.3",
     "python-multipart>=0.0.32",
     "qdrant-client>=1.19.1",
     "ragas>=0.3.1",
+    "rank-bm25>=0.2.2,<0.3",
     "redis>=8.1.0",
     "sqlalchemy[asyncio]>=2.0.54",
     "sse-starlette>=3.5.0",
@@ -43,6 +51,7 @@ dev = [
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.8",
 ]
 

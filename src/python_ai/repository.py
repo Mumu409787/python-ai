@@ -65,6 +65,36 @@ async def list_documents(session: AsyncSession, *, limit: int = 100) -> list[Doc
     return list(result.scalars().all())
 
 
+async def done_document_ids(session: AsyncSession, doc_ids: set[int]) -> set[int]:
+    """以元数据状态为准，避免检索返回处理中、失败或已删除的文档。"""
+    if not doc_ids:
+        return set()
+    result = await session.scalars(
+        select(Document.id).where(Document.id.in_(doc_ids), Document.status == DocStatus.DONE)
+    )
+    return set(result.all())
+
+
+async def searchable_chunks(
+    session: AsyncSession,
+) -> list[tuple[int, str, int, int, str, int | None]]:
+    """返回 DONE 文档的片段快照；不使用文档列表的 100 条展示上限。"""
+    result = await session.execute(
+        select(
+            Document.id,
+            Document.doc_name,
+            Chunk.id,
+            Chunk.chunk_index,
+            Chunk.content,
+            Chunk.source_page,
+        )
+        .join(Chunk, Chunk.doc_id == Document.id)
+        .where(Document.status == DocStatus.DONE)
+        .order_by(Chunk.id)
+    )
+    return [tuple(row) for row in result.all()]
+
+
 async def delete_document(session: AsyncSession, doc: Document) -> None:
     """删文档。chunk 靠 `cascade` 一起删。"""
     await session.delete(doc)

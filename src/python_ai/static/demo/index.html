@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142b29">
+  <title>知序 · 持续优化版 · 8000</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23142b29'/%3E%3Cpath d='M9 9h14L9 23h14' fill='none' stroke='%239be4bb' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/demo/style.css">
+  <script type="module" src="/static/demo/app.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="知序首页"><span class="brand-icon">Z</span><span>知序<small>PYTHON AI / WORKSPACE</small></span></a>
+    <p class="nav-label">持续优化版 · 8000</p>
+    <nav aria-label="主导航">
+      <button class="nav-item active" data-view="workspace" aria-current="page"><span>◈</span>知识库工作台<span class="nav-number">01</span></button>
+      <button class="nav-item" data-view="changes"><span>⇄</span>优化前后对照<span class="nav-number">02</span></button>
+      <button class="nav-item" data-view="cases"><span>☷</span>一步步验收<span class="nav-number">03</span></button>
+      <a class="nav-item" href="/compare" target="_blank" rel="noopener"><span>▥</span>双版本实测<span class="nav-number">04</span></a>
+    </nav>
+    <div class="sidebar-note"><span class="little-spark">✳</span><h3>从“能回答”<br>到“回答有依据”</h3><p>上传自己的资料，追溯每一次回答的来源。</p><span class="version-tag">本地运行 · v0.1</span></div>
+    <a class="docs-link" href="/docs" target="_blank" rel="noopener">开发者接口文档 <span>↗</span></a>
+  </aside>
+
+  <main>
+    <header class="topbar"><span class="breadcrumb">我的工作空间 <span>/</span> <strong id="page-title">知识库工作台</strong></span><div class="connection"><span id="connection-dot" class="dot pending"></span><span id="connection-text">检查连接中</span><button id="refresh" class="icon-button" aria-label="刷新服务状态与文档">↻</button></div></header>
+
+    <section id="view-workspace" class="view">
+      <div class="page-heading"><div><p class="eyebrow">KNOWLEDGE, WITH EVIDENCE</p><h1>让资料，成为答案。</h1><p class="subtitle">从文档中找到依据，看见 AI 回答背后的每一个片段。</p></div><div class="heading-stamp"><span>RAG</span><small>检索 · 重排 · 生成</small></div></div>
+      <div class="service-strip" aria-label="依赖状态"><span class="strip-label">服务状态</span><span id="health-postgres" class="health-tag">PostgreSQL <i>检查中</i></span><span id="health-qdrant" class="health-tag">Qdrant <i>检查中</i></span><span id="health-redis" class="health-tag">Redis <i>检查中</i></span><span id="rerank-status" class="rerank-tag">重排 —</span></div>
+      <p class="usage-note">真实服务体验：上传与提问会使用已配置的模型 API；仅浏览页面和查看文档列表不调用模型。</p>
+
+      <div class="workspace-grid">
+        <section class="panel library-panel" aria-labelledby="library-title">
+          <div class="panel-head"><div><span class="section-index">01 / LIBRARY</span><h2 id="library-title">我的知识库 <span id="doc-count" class="count">—</span></h2></div><span class="tiny-label">PDF · 图片 · 文本</span></div>
+          <label id="dropzone" class="dropzone" for="file-input"><span class="upload-icon">↥</span><strong>拖入文档，或点击选择</strong><span id="upload-limit">单份文件最大 20 MB · 支持扫描 PDF 和文字图片</span><input id="file-input" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.txt,.text,.log,.md,.markdown,.java,.py,.xml,.yml,.yaml,.json,.properties,.sql,.csv"></label>
+          <button id="load-sample" class="sample-button"><span>✦</span><span>没有资料？载入星链网关示例<small>虚构 API 规范，适合第一次体验</small></span><span>↗</span></button>
+          <p id="upload-status" class="inline-status" role="status" aria-live="polite">相同内容自动去重，无需重复向量化。</p>
+          <div class="list-heading"><span>已入库文档</span><button id="refresh-docs" class="text-button">刷新列表</button></div>
+          <div id="document-list" class="document-list"><p class="empty-small">正在读取知识库…</p></div>
+          <a class="sample-download" href="/demo/sample" download>下载示例文档，查看原文 ↗</a>
+        </section>
+
+        <section class="panel chat-panel" aria-labelledby="chat-title">
+          <div class="panel-head"><div><span class="section-index">02 / CONVERSATION</span><h2 id="chat-title">与知识对话</h2></div><button id="new-session" class="text-button">＋ 新会话</button></div>
+          <div class="chat-toolbar"><div class="mode-switch" aria-label="对话模式"><button data-mode="RAG" class="selected" aria-pressed="true">知识库问答</button><button data-mode="CHAT" aria-pressed="false">普通聊天</button></div><label class="stream-option"><input id="stream-toggle" type="checkbox" checked> 流式输出</label></div>
+          <div id="messages" class="messages" role="log" aria-label="对话内容" aria-live="polite">
+            <div class="welcome" id="welcome"><div class="welcome-mark">✳</div><h3>好答案，从好问题开始。</h3><p>先在左侧载入示例，再试着问：</p><div class="suggestions"><button data-question="访问 Token 的有效期是多久？" data-mode="RAG">访问 Token 的有效期是多久？ <span>↗</span></button><button data-question="网关的限流维度和默认配额是多少？" data-mode="RAG">网关的限流维度和默认配额是多少？ <span>↗</span></button><button data-question="推荐几家好吃的火锅店" data-mode="RAG">问一个资料之外的问题，看看如何拒答 <span>↗</span></button></div></div>
+          </div>
+          <form id="chat-form" class="composer"><label class="sr-only" for="question">输入问题</label><textarea id="question" rows="2" maxlength="4000" placeholder="问问这份资料，比如：网关超时是多少秒？"></textarea><div class="composer-bottom"><span id="session-label" title="刷新保留会话编号，本页不持久化聊天正文">当前会话 —</span><div><button id="stop" type="button" class="stop-button" hidden>停止生成</button><button id="send" class="send-button" type="submit">发送 <span>↗</span></button></div></div></form>
+          <div class="chat-footer"><span id="request-status" role="status">回答可追溯 · 资料不足会说明</span><span>Enter 发送 / Shift + Enter 换行</span></div>
+        </section>
+
+        <section class="panel evidence-panel" aria-labelledby="evidence-title"><div class="panel-head"><div><span class="section-index">03 / EVIDENCE</span><h2 id="evidence-title">答案从哪里来</h2></div><span id="hit-count" class="count">0</span></div><p class="evidence-intro" id="evidence-intro">每个引用都对应一段检索原文。点击回答中的 [序号]，即可定位依据。</p><div id="evidence-list"><div class="evidence-empty"><span>⌕</span><h3>依据会在这里出现</h3><p>发送知识库问题后，查看相关原文、文档名称与检索分数。</p></div></div><div class="evidence-note">分数用于本次结果排序，不代表答案正确率。</div></section>
+      </div>
+      <footer class="page-footer"><span>知序 · Python + AI 学习项目</span><span>追问改写 → 混合检索 → 重排 → 有据回答</span></footer>
+    </section>
+
+    <section id="view-changes" class="view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">SMALL CHANGES, REAL DIFFERENCE</p><h1>这一次，具体优化了什么？</h1><p class="subtitle">正常流程之外，把重复操作、异常和恢复也认真处理好。</p></div></div>
+      <div class="change-callout"><span>↗</span><div><h2>从有据回答，到可追踪、可学习。</h2><p>混合检索与改写之后，继续加入持久检查点、调用链追踪、数据库迁移、分类模型和 OCR。原有上传与问答操作保留。</p></div></div>
+      <div class="panel comparison"><table><thead><tr><th>场景</th><th>之前的实现</th><th>现在的行为</th><th>怎么验证</th></tr></thead><tbody>
+        <tr><td>错误码、接口路径检索</td><td>仅向量召回，精确标识可能遗漏</td><td>BM25 与向量召回按 RRF 融合，再重排</td><td>案例 08 + 召回对照</td></tr>
+        <tr><td>省略主语的追问</td><td>检索直接使用本轮原问题</td><td>结合有限历史改写检索问题；失败回退，页面显示实际问题</td><td>案例 09 + 改写回归</td></tr>
+        <tr><td>失败后重新上传</td><td>删除旧记录时可能漏掉已写入的向量</td><td>先清理旧向量；失败保留记录，支持再次重试</td><td>自动化故障回归</td></tr>
+        <tr><td>同时上传或删除</td><td>可能删除正在处理中的记录或撞唯一约束</td><td>数据库锁互斥同内容操作，冲突返回 1003</td><td>真实服务联调</td></tr>
+        <tr><td>资料里找不到答案</td><td>仍调用模型，依赖提示词让模型拒答</td><td>无命中直接固定拒答，省去生成调用</td><td>案例 03 + 回归测试</td></tr>
+        <tr><td>模型没有正文</td><td>可能返回成功并保存空回答</td><td>返回模型错误，不把空回答当作成功</td><td>自动化故障回归</td></tr>
+        <tr><td>Rerank 响应异常</td><td>空结果或重复索引可能导致漏检、重复引用</td><td>校验响应，异常时回退合格的向量候选</td><td>自动化故障回归</td></tr>
+        <tr><td>文件上传</td><td>读完整文件后检查大小；部分 PDF 抽取错误会成为 500</td><td>有界读取，统一处理 PDF 错误，支持 UTF-8 BOM</td><td>案例 07 + 回归测试</td></tr>
+        <tr><td>持久会话</td><td>Redis 保存有限历史</td><td>默认 LangGraph PostgreSQL 检查点，隔离模式、TTL、并发写保护</td><td>案例 05 / 10 + 重启实测</td></tr>
+        <tr><td>调用链</td><td>主要依靠终端日志</td><td>Langfuse Cloud 显示检索、生成和记忆读写</td><td>案例 11</td></tr>
+        <tr><td>数据库变更</td><td>启动时 create_all</td><td>Alembic 显式版本迁移，启动只检查</td><td>四阶段指南 + 隔离库测试</td></tr>
+        <tr><td>本地模型</td><td>通过 API 使用已有模型</td><td>训练问题主题分类器，JSON 参数推理与低分回退</td><td>案例 12 + 固定测试集</td></tr>
+        <tr><td>扫描资料</td><td>只能抽取 PDF 原生文字</td><td>图片与扫描页 OCR，引用保留物理页码</td><td>案例 13</td></tr>
+        <tr><td>端到端验收脚本</td><td>开始时会删除全部已有文档</td><td>独立测试内容，只清理本次创建的文档</td><td>脚本行为与代码检查</td></tr>
+        <tr><td>使用界面</td><td>主要使用 Swagger 调接口</td><td>上传、流式问答、来源、案例集中在同一工作台</td><td>直接体验当前页面</td></tr>
+      </tbody></table></div>
+      <div class="boundary-note"><h3>怎么看待这些结果？</h3><p>混合检索与改写均有离线回归；真实服务联调验证新增、去重、删除与记忆，模型使用替身。小范围召回对照独立保存，不宣称总体准确率或速度提升。历史 Ragas 报告保留在 evaluation/。</p><p>检查点保存完整会话，不是全链路断点续跑；分类器是小样本教学模型，OCR 仍可能有错字。LoRA 只完成条件评估，未执行大模型微调。BM25 当前每次读取全部已入库片段，适用于小型知识库；资料变多后需改为持久索引。PostgreSQL 与 Qdrant 之间没有分布式事务。</p></div>
+    </section>
+
+    <section id="view-cases" class="view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">TRY IT, THEN TRUST IT</p><h1>用十三个案例，亲手验收。</h1><p class="subtitle">建议按顺序体验。问答内容可能变化，判断标准看事实、引用和状态。</p></div><a class="button-link" href="/demo/guide" target="_blank" rel="noopener">打开完整验收指南 ↗</a></div>
+      <div class="case-grid">
+        <article class="case-card"><span class="case-index">CASE 01 <span>上传与去重</span></span><h2>一份资料，只入库一次。</h2><p>回工作台连续两次点击“载入示例”。第一次创建文档或提示已存在，第二次应显示“内容已存在”，且文档 ID 相同。</p><div class="expected"><strong>验收标准</strong>文档列表不增加重复项，第二次不重复向量化。</div><button class="case-action" data-go="workspace">前往载入示例 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 02 <span>有依据的回答</span></span><h2>Token 到底能用多久？</h2><p>先载入星链网关示例，再发送“访问 Token 的有效期是多久？”</p><div class="expected"><strong>验收标准</strong>答案包含“2 小时”并带 [序号]；右侧原文能找到对应依据。</div><button class="case-action" data-question="访问 Token 的有效期是多久？" data-mode="RAG">填入这个问题 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 03 <span>资料不足</span></span><h2>不知道，也是一种正确回答。</h2><p>在只有网关资料的知识库中询问“推荐几家好吃的火锅店”。如果你的库里另有餐饮资料，请换成库外问题。</p><div class="expected"><strong>验收标准</strong>无命中时固定回答“根据现有知识库资料，无法回答该问题。”，右侧引用为 0。</div><button class="case-action" data-question="推荐几家好吃的火锅店" data-mode="RAG">填入这个问题 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 04 <span>流式与非流式</span></span><h2>看见答案逐步出现。</h2><p>打开“流式输出”，问网关超时；再关闭开关发送同样问题，对比呈现方式。</p><div class="expected"><strong>验收标准</strong>流式正文逐步出现；非流式等待后一次展示。两者事实都应是 30 秒，超时返回 504。</div><button class="case-action" data-question="网关侧单请求处理超时是多少秒，超时后返回什么？" data-mode="RAG">填入这个问题 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 05 <span>会话记忆</span></span><h2>它能记住上一轮吗？</h2><p>切换“普通聊天”，新建会话。先说“请记住我的毕业设计代号是青竹-472。”，再问“我的毕业设计代号是什么？”</p><div class="expected"><strong>验收标准</strong>同会话应回答“青竹-472”；新会话不会携带这段历史。默认使用 PostgreSQL 检查点。</div><button class="case-action" data-question="请记住我的毕业设计代号是青竹-472。" data-mode="CHAT">切换聊天并填入 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 06 <span>删除验证</span></span><h2>资料删除，引用随之消失。</h2><p>上传自己的临时测试文档，例如写入“苍鹭测试服务端口是 18743”。确认能问到后，仅删除这份临时文档，再问同一问题。</p><div class="expected"><strong>验收标准</strong>列表无该文档；后续引用不再包含它。若有其他资料，可能仍命中其他文档。</div><button class="case-action" data-question="苍鹭测试服务端口是多少？" data-mode="RAG">填入验证问题 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 07 <span>异常与恢复</span></span><h2>出错时，给出明确反馈。</h2><p>上传不支持的文件或损坏的 PDF，查看错误提示。超时、限流、并发冲突和部分写入用自动化测试验证，无需故意停掉服务。</p><div class="expected"><strong>验收标准</strong>上传错误可见；不会假装成功。异常回答不保存为完整一轮；回归测试覆盖故障分支。</div><a class="case-action" href="/demo/guide" target="_blank" rel="noopener">查看回归测试命令 ↗</a></article>
+        <article class="case-card"><span class="case-index">CASE 08 <span>混合检索</span></span><h2>错误码也能直接查。</h2><p>先载入星链网关示例，再发送“42901”。也可以问“/auth/refresh 有什么作用？”</p><div class="expected"><strong>验收标准</strong>42901 对应触发限流，并有包含该错误码的来源。是否优于原方案，以固定题集对照为准。</div><button class="case-action" data-question="42901" data-mode="RAG">填入错误码 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 09 <span>追问改写</span></span><h2>“那刷新用的呢？”</h2><p>知识库新会话先问“访问 Token 的有效期是多久？”，等回答完成再问“那刷新用的呢？”。不要中途新建会话。</p><div class="expected"><strong>验收标准</strong>检索问题补全 Refresh Token，回答为 7 天并有来源。答案下方可查看实际检索问题；改写失败会明确提示回退。</div><button class="case-action" data-question="那刷新用的呢？" data-mode="RAG">填入第二轮追问 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 10 <span>持久检查点</span></span><h2>重启服务，仍记得上一轮。</h2><p>普通聊天记住“雪松-638”，保留当前会话，在 PowerShell 停止并重启本项目服务，再追问代号。</p><div class="expected"><strong>验收标准</strong>同编号、同模式、有效期内可回忆；答案下方显示“会话已保存”。</div><a class="case-action" href="/demo/guide?stages=true" target="_blank" rel="noopener">查看重启步骤 ↗</a></article>
+        <article class="case-card"><span class="case-index">CASE 11 <span>调用追踪</span></span><h2>看见答案走过的每一步。</h2><p>正常问一次 42901，回答完成后点“查看调用链”，进入自己的 Langfuse Cloud 项目。</p><div class="expected"><strong>验收标准</strong>有根 trace、检索、生成、记忆读写；默认不上传问题和资料正文。</div><button class="case-action" data-question="42901" data-mode="RAG">填入追踪问题 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 12 <span>训练后的分类</span></span><h2>这是什么主题的问题？</h2><p>问“访问令牌多久过期”，在答案下方查看“模型主题：认证”。低置信度显示未确定；分类不改变问答证据规则。</p><div class="expected"><strong>验收标准</strong>本地模型参与推理，有固定测试集及失败案例；不把小样本指标当作生产准确率。</div><button class="case-action" data-question="访问令牌多久过期" data-mode="RAG">填入分类问题 ↗</button></article>
+        <article class="case-card"><span class="case-index">CASE 13 <span>OCR 与页码</span></span><h2>图片里的文字，也能成为依据。</h2><p><a href="/demo/ocr-sample?kind=mixed" download>下载混合 PDF 样本</a>，回到工作台点击上传区域选择它。新会话问“CRANE-18743 对应的图像服务端口是多少？”</p><div class="expected"><strong>验收标准</strong>端口 18743，右侧引用第 2 页；中文名称可能有 OCR 偏差，需核对原件。</div><button class="case-action" data-question="CRANE-18743 对应的图像服务端口是多少？" data-mode="RAG">填入 OCR 问题 ↗</button></article>
+      </div>
+      <p class="boundary-note">快捷按钮只切换模式并填入问题，点击“发送”才会调用模型。有历史的知识库问题最多额外调用一次改写模型；首轮和普通聊天不调用改写。故障回归与模型质量不能互相替代。</p>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

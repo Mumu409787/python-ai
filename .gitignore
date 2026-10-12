@@ -20,6 +20,12 @@ wheels/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+.demo-run/
+.tools/
+training/artifacts/*.joblib
+evaluation/runs/
+.codex/
+.playwright-mcp/
 
 # IDE
 .idea/

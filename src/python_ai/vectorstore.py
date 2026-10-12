@@ -25,8 +25,10 @@ from qdrant_client.models import (
 
 from .clients import qdrant
 from .config import get_settings
+from .db.session import session_scope
 from .embedding import embed_query, probe_dimension
 from .errors import BizError, ResultCode
+from .repository import done_document_ids
 
 # payload 键名 —— 前四个与 Java 的 ChunkMetadataKeys 保持一致
 PAYLOAD_DOC_ID = "doc_id"
@@ -45,6 +47,7 @@ class VectorPoint:
     chunk_id: int
     chunk_index: int
     content: str
+    source_page: int | None = None
 
 
 @dataclass(slots=True)
@@ -55,6 +58,8 @@ class SearchHit:
     chunk_id: int | None
     chunk_index: int | None
     content: str
+    score_kind: str = "vector"
+    source_page: int | None = None
 
     @classmethod
     def from_scored_point(cls, point: object) -> SearchHit:
@@ -66,6 +71,7 @@ class SearchHit:
             chunk_id=payload.get(PAYLOAD_CHUNK_ID),
             chunk_index=payload.get(PAYLOAD_CHUNK_INDEX),
             content=payload.get(PAYLOAD_CONTENT, ""),
+            source_page=payload.get("source_page"),
         )
 
 
@@ -107,12 +113,23 @@ async def ensure_collection() -> int:
         return dim
 
     info = await client.get_collection(name)
-    existing = info.config.params.vectors.size
+    params = info.config.params.vectors
+    if not isinstance(params, VectorParams):
+        raise BizError(
+            ResultCode.VECTOR_STORE_UNAVAILABLE,
+            f"集合 {name} 使用命名向量，本项目需要单一未命名向量；请配置其他集合名",
+        )
+    existing = params.size
     if existing != dim:
         raise BizError(
             ResultCode.VECTOR_STORE_UNAVAILABLE,
             f"集合 {name} 的维度是 {existing}，与向量模型实测维度 {dim} 不一致。"
-            f"修复：docker compose down -v && docker compose up -d（会清空已有向量，需重新入库）",
+            "请使用与现有集合匹配的向量模型，或设置新的 QDRANT_COLLECTION 后重新入库",
+        )
+    if params.distance != Distance.COSINE:
+        raise BizError(
+            ResultCode.VECTOR_STORE_UNAVAILABLE,
+            f"集合 {name} 必须使用 Cosine 距离；请配置新的 QDRANT_COLLECTION 后重新入库",
         )
     return dim
 
@@ -135,6 +152,7 @@ async def upsert_points(points: list[VectorPoint]) -> None:
                         PAYLOAD_DOC_NAME: p.doc_name,
                         PAYLOAD_CHUNK_ID: p.chunk_id,
                         PAYLOAD_CHUNK_INDEX: p.chunk_index,
+                        "source_page": p.source_page,
                         PAYLOAD_CONTENT: p.content,
                     },
                 )
@@ -173,7 +191,10 @@ async def search(
             f"向量检索失败：{exc}",
         ) from exc
 
-    return [SearchHit.from_scored_point(p) for p in result.points]
+    hits = [SearchHit.from_scored_point(p) for p in result.points]
+    async with session_scope() as session:
+        ready = await done_document_ids(session, {h.doc_id for h in hits if h.doc_id is not None})
+    return [h for h in hits if h.doc_id in ready and h.content.strip()]
 
 
 async def delete_by_doc(doc_id: int) -> None:

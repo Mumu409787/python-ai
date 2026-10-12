@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+import math
+
 from .clients import embedding_client
 from .config import get_settings
 from .errors import BizError, ResultCode
@@ -24,7 +26,9 @@ async def embed_texts(texts: list[str], *, batch_size: int | None = None) -> lis
         return []
 
     s = get_settings()
-    size = batch_size or s.embedding_batch_size
+    size = batch_size if batch_size is not None else s.embedding_batch_size
+    if size <= 0:
+        raise BizError(ResultCode.PARAM_INVALID, "向量批大小必须大于 0")
     client = embedding_client()
     vectors: list[list[float]] = []
 
@@ -41,6 +45,15 @@ async def embed_texts(texts: list[str], *, batch_size: int | None = None) -> lis
             ) from exc
 
         ordered = sorted(resp.data, key=lambda item: item.index)
+        if [item.index for item in ordered] != list(range(len(batch))):
+            raise BizError(ResultCode.EMBEDDING_FAILED, "向量响应数量或索引不完整", retryable=True)
+        expected_dim = len(vectors[0]) if vectors else len(ordered[0].embedding)
+        if not expected_dim or any(
+            len(item.embedding) != expected_dim
+            or not all(math.isfinite(value) for value in item.embedding)
+            for item in ordered
+        ):
+            raise BizError(ResultCode.EMBEDDING_FAILED, "向量响应维度不一致或包含无效数值")
         vectors.extend(item.embedding for item in ordered)
 
     return vectors

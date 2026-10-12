@@ -12,13 +12,20 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Query
 from sse_starlette.sse import EventSourceResponse
 
+from ..classification import classify
 from ..errors import BizError, ResultCode, friendly_llm_message
 from ..rag import answer, new_session_id, stream_answer
-from ..schemas import ChatMode, ChatRequest, ChatResponse, Result
+from ..schemas import ChatMode, ChatRequest, ChatResponse, QuestionCategory, Result
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+
+@router.post("/classify", response_model=Result[QuestionCategory])
+async def classify_question(request: ChatRequest):
+    """本地主题分类，不检索、不调用 API 模型、不写会话。"""
+    return Result.ok(classify(request.message))
 
 
 def _parse_mode(raw: str | None) -> ChatMode:
@@ -56,6 +63,8 @@ async def chat_stream_get(
     sessionId: str | None = Query(None),  # noqa: N803 —— 保持与 Java 侧的参数名一致
     mode: str = Query("RAG"),
 ) -> EventSourceResponse:
+    if not message.strip():
+        raise BizError(ResultCode.PARAM_INVALID, "问题不能只包含空白字符")
     return _sse_response(message, sessionId, _parse_mode(mode))
 
 

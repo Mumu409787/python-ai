@@ -1,0 +1,104 @@
+{"id": "auth-train-01", "text": "访问令牌多久过期", "label": "auth", "split": "train", "group": "auth-train-pair-0"}
+{"id": "auth-train-02", "text": "Access Token 的有效期是几小时", "label": "auth", "split": "train", "group": "auth-train-pair-0"}
+{"id": "auth-train-03", "text": "Refresh Token 应该怎么使用", "label": "auth", "split": "train", "group": "auth-train-pair-1"}
+{"id": "auth-train-04", "text": "刷新令牌能用几天", "label": "auth", "split": "train", "group": "auth-train-pair-1"}
+{"id": "auth-train-05", "text": "认证失败后如何重新登录", "label": "auth", "split": "train", "group": "auth-train-pair-2"}
+{"id": "auth-train-06", "text": "API Key 去哪里生成", "label": "auth", "split": "train", "group": "auth-train-pair-2"}
+{"id": "auth-train-07", "text": "接口调用需要什么鉴权信息", "label": "auth", "split": "train", "group": "auth-train-pair-3"}
+{"id": "auth-train-08", "text": "请求头里的 Authorization 怎么填写", "label": "auth", "split": "train", "group": "auth-train-pair-3"}
+{"id": "auth-train-09", "text": "密钥丢失后怎样重置", "label": "auth", "split": "train", "group": "auth-train-pair-4"}
+{"id": "auth-train-10", "text": "Token 过期了还能续期吗", "label": "auth", "split": "train", "group": "auth-train-pair-4"}
+{"id": "auth-train-11", "text": "登录接口会签发哪些令牌", "label": "auth", "split": "train", "group": "auth-train-pair-5"}
+{"id": "auth-train-12", "text": "用户身份认证的流程是什么", "label": "auth", "split": "train", "group": "auth-train-pair-5"}
+{"id": "auth-train-13", "text": "为什么提示无效的访问令牌", "label": "auth", "split": "train", "group": "auth-train-pair-6"}
+{"id": "auth-train-14", "text": "如何撤销已泄露的 API 密钥", "label": "auth", "split": "train", "group": "auth-train-pair-6"}
+{"id": "auth-train-15", "text": "Bearer 后面应该放什么", "label": "auth", "split": "train", "group": "auth-train-pair-7"}
+{"id": "auth-train-16", "text": "刷新令牌可以反复使用吗", "label": "auth", "split": "train", "group": "auth-train-pair-7"}
+{"id": "auth-validation-01", "text": "调用接口之前怎样完成认证", "label": "auth", "split": "validation", "group": "auth-validation-pair-0"}
+{"id": "auth-validation-02", "text": "想更换登录使用的密钥", "label": "auth", "split": "validation", "group": "auth-validation-pair-0"}
+{"id": "auth-validation-03", "text": "Token 的过期时间在哪里看", "label": "auth", "split": "validation", "group": "auth-validation-pair-1"}
+{"id": "auth-validation-04", "text": "怎样携带 Bearer 凭证", "label": "auth", "split": "validation", "group": "auth-validation-pair-1"}
+{"id": "auth-test-01", "text": "访问 Token 失效以后应该怎样处理", "label": "auth", "split": "test", "group": "auth-test-pair-0"}
+{"id": "auth-test-02", "text": "登录后拿到的令牌多久有效", "label": "auth", "split": "test", "group": "auth-test-pair-0"}
+{"id": "auth-test-03", "text": "请说明 API Key 的轮换办法", "label": "auth", "split": "test", "group": "auth-test-pair-1"}
+{"id": "auth-test-04", "text": "请求头没有鉴权凭证会怎样", "label": "auth", "split": "test", "group": "auth-test-pair-1"}
+{"id": "auth-test-05", "text": "Refresh Token 能够重复提交吗", "label": "auth", "split": "test", "group": "auth-test-pair-2"}
+{"id": "auth-test-06", "text": "身份认证需要传入哪些字段", "label": "auth", "split": "test", "group": "auth-test-pair-2"}
+{"id": "rate_limit-train-01", "text": "错误码42901是什么意思", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-0"}
+{"id": "rate_limit-train-02", "text": "为什么请求返回429", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-0"}
+{"id": "rate_limit-train-03", "text": "触发限流之后要等多久", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-1"}
+{"id": "rate_limit-train-04", "text": "Retry-After 响应头如何处理", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-1"}
+{"id": "rate_limit-train-05", "text": "每秒最多发送多少次请求", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-2"}
+{"id": "rate_limit-train-06", "text": "QPS 配额可以申请提高吗", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-2"}
+{"id": "rate_limit-train-07", "text": "超过调用频率会有什么后果", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-3"}
+{"id": "rate_limit-train-08", "text": "限流滑动窗口有多长", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-3"}
+{"id": "rate_limit-train-09", "text": "请求太频繁时如何退避重试", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-4"}
+{"id": "rate_limit-train-10", "text": "每个应用的速率上限是多少", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-4"}
+{"id": "rate_limit-train-11", "text": "42901需要立即重试吗", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-5"}
+{"id": "rate_limit-train-12", "text": "如何避免撞上限流规则", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-5"}
+{"id": "rate_limit-train-13", "text": "配额用尽应该怎样处理", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-6"}
+{"id": "rate_limit-train-14", "text": "服务的并发请求限额是多少", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-6"}
+{"id": "rate_limit-train-15", "text": "调用速率能设为一千QPS吗", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-7"}
+{"id": "rate_limit-train-16", "text": "遇到 Retry-After 应当等待多少秒", "label": "rate_limit", "split": "train", "group": "rate_limit-train-pair-7"}
+{"id": "rate_limit-validation-01", "text": "请求频率太高被拒绝怎么办", "label": "rate_limit", "split": "validation", "group": "rate_limit-validation-pair-0"}
+{"id": "rate_limit-validation-02", "text": "需要提高接口的QPS额度", "label": "rate_limit", "split": "validation", "group": "rate_limit-validation-pair-0"}
+{"id": "rate_limit-validation-03", "text": "触发429后等待时间怎么算", "label": "rate_limit", "split": "validation", "group": "rate_limit-validation-pair-1"}
+{"id": "rate_limit-validation-04", "text": "达到速率限制后怎么重试", "label": "rate_limit", "split": "validation", "group": "rate_limit-validation-pair-1"}
+{"id": "rate_limit-test-01", "text": "网关报42901时客户端该做什么", "label": "rate_limit", "split": "test", "group": "rate_limit-test-pair-0"}
+{"id": "rate_limit-test-02", "text": "应用每秒请求量有哪些限制", "label": "rate_limit", "split": "test", "group": "rate_limit-test-pair-0"}
+{"id": "rate_limit-test-03", "text": "触发限流能直接连续重发吗", "label": "rate_limit", "split": "test", "group": "rate_limit-test-pair-1"}
+{"id": "rate_limit-test-04", "text": "Retry-After 是秒还是分钟", "label": "rate_limit", "split": "test", "group": "rate_limit-test-pair-1"}
+{"id": "rate_limit-test-05", "text": "QPS 达到配额后应采用什么策略", "label": "rate_limit", "split": "test", "group": "rate_limit-test-pair-2"}
+{"id": "rate_limit-test-06", "text": "怎样给频繁请求增加退避时间", "label": "rate_limit", "split": "test", "group": "rate_limit-test-pair-2"}
+{"id": "failure-train-01", "text": "网关超时是多少秒", "label": "failure", "split": "train", "group": "failure-train-pair-0"}
+{"id": "failure-train-02", "text": "服务返回500怎么排查", "label": "failure", "split": "train", "group": "failure-train-pair-0"}
+{"id": "failure-train-03", "text": "503服务不可用是什么原因", "label": "failure", "split": "train", "group": "failure-train-pair-1"}
+{"id": "failure-train-04", "text": "连接数据库失败应该检查哪里", "label": "failure", "split": "train", "group": "failure-train-pair-1"}
+{"id": "failure-train-05", "text": "服务器内部错误要找什么日志", "label": "failure", "split": "train", "group": "failure-train-pair-2"}
+{"id": "failure-train-06", "text": "网络连接超时能重试吗", "label": "failure", "split": "train", "group": "failure-train-pair-2"}
+{"id": "failure-train-07", "text": "502网关错误如何定位", "label": "failure", "split": "train", "group": "failure-train-pair-3"}
+{"id": "failure-train-08", "text": "接口一直没有响应怎么办", "label": "failure", "split": "train", "group": "failure-train-pair-3"}
+{"id": "failure-train-09", "text": "响应中出现系统异常", "label": "failure", "split": "train", "group": "failure-train-pair-4"}
+{"id": "failure-train-10", "text": "上游服务宕机了如何处理", "label": "failure", "split": "train", "group": "failure-train-pair-4"}
+{"id": "failure-train-11", "text": "上传文件失败从哪里看原因", "label": "failure", "split": "train", "group": "failure-train-pair-5"}
+{"id": "failure-train-12", "text": "数据库连接被拒绝怎么修复", "label": "failure", "split": "train", "group": "failure-train-pair-5"}
+{"id": "failure-train-13", "text": "请求报超时异常应该如何排查", "label": "failure", "split": "train", "group": "failure-train-pair-6"}
+{"id": "failure-train-14", "text": "连接断开导致响应不完整", "label": "failure", "split": "train", "group": "failure-train-pair-6"}
+{"id": "failure-train-15", "text": "服务器崩溃后如何恢复", "label": "failure", "split": "train", "group": "failure-train-pair-7"}
+{"id": "failure-train-16", "text": "PDF解析报错怎么办", "label": "failure", "split": "train", "group": "failure-train-pair-7"}
+{"id": "failure-validation-01", "text": "遇到系统内部异常应该查什么", "label": "failure", "split": "validation", "group": "failure-validation-pair-0"}
+{"id": "failure-validation-02", "text": "后端数据库连不上要检查哪里", "label": "failure", "split": "validation", "group": "failure-validation-pair-0"}
+{"id": "failure-validation-03", "text": "请求的响应超过超时上限了", "label": "failure", "split": "validation", "group": "failure-validation-pair-1"}
+{"id": "failure-validation-04", "text": "502导致服务无法返回结果", "label": "failure", "split": "validation", "group": "failure-validation-pair-1"}
+{"id": "failure-test-01", "text": "服务器给出503的时候怎么排查", "label": "failure", "split": "test", "group": "failure-test-pair-0"}
+{"id": "failure-test-02", "text": "网关等待上游响应多久会超时", "label": "failure", "split": "test", "group": "failure-test-pair-0"}
+{"id": "failure-test-03", "text": "数据库连接异常如何查看日志", "label": "failure", "split": "test", "group": "failure-test-pair-1"}
+{"id": "failure-test-04", "text": "上传PDF提示解析失败怎么办", "label": "failure", "split": "test", "group": "failure-test-pair-1"}
+{"id": "failure-test-05", "text": "遇到500内部错误应如何定位", "label": "failure", "split": "test", "group": "failure-test-pair-2"}
+{"id": "failure-test-06", "text": "服务崩溃造成连接中断怎么恢复", "label": "failure", "split": "test", "group": "failure-test-pair-2"}
+{"id": "other-train-01", "text": "你好呀", "label": "other", "split": "train", "group": "other-train-pair-0"}
+{"id": "other-train-02", "text": "谢谢你的帮助", "label": "other", "split": "train", "group": "other-train-pair-0"}
+{"id": "other-train-03", "text": "帮我写一首关于春天的诗", "label": "other", "split": "train", "group": "other-train-pair-1"}
+{"id": "other-train-04", "text": "推荐周末做什么", "label": "other", "split": "train", "group": "other-train-pair-1"}
+{"id": "other-train-05", "text": "今天心情很好想聊聊", "label": "other", "split": "train", "group": "other-train-pair-2"}
+{"id": "other-train-06", "text": "介绍一下你的能力", "label": "other", "split": "train", "group": "other-train-pair-2"}
+{"id": "other-train-07", "text": "我想学习Python从哪开始", "label": "other", "split": "train", "group": "other-train-pair-3"}
+{"id": "other-train-08", "text": "解释一下什么是人工智能", "label": "other", "split": "train", "group": "other-train-pair-3"}
+{"id": "other-train-09", "text": "怎样安排毕业论文时间", "label": "other", "split": "train", "group": "other-train-pair-4"}
+{"id": "other-train-10", "text": "晚饭吃什么比较好", "label": "other", "split": "train", "group": "other-train-pair-4"}
+{"id": "other-train-11", "text": "请讲个简短的笑话", "label": "other", "split": "train", "group": "other-train-pair-5"}
+{"id": "other-train-12", "text": "帮我写一段自我介绍", "label": "other", "split": "train", "group": "other-train-pair-5"}
+{"id": "other-train-13", "text": "早上好朋友", "label": "other", "split": "train", "group": "other-train-pair-6"}
+{"id": "other-train-14", "text": "如何培养阅读习惯", "label": "other", "split": "train", "group": "other-train-pair-6"}
+{"id": "other-train-15", "text": "说明机器学习和深度学习的关系", "label": "other", "split": "train", "group": "other-train-pair-7"}
+{"id": "other-train-16", "text": "给我三个学习建议", "label": "other", "split": "train", "group": "other-train-pair-7"}
+{"id": "other-validation-01", "text": "帮我准备毕业面试的自我介绍", "label": "other", "split": "validation", "group": "other-validation-pair-0"}
+{"id": "other-validation-02", "text": "想听一个轻松的小故事", "label": "other", "split": "validation", "group": "other-validation-pair-0"}
+{"id": "other-validation-03", "text": "下午好很高兴见到你", "label": "other", "split": "validation", "group": "other-validation-pair-1"}
+{"id": "other-validation-04", "text": "如何制定一周的学习计划", "label": "other", "split": "validation", "group": "other-validation-pair-1"}
+{"id": "other-test-01", "text": "你好很高兴认识你", "label": "other", "split": "test", "group": "other-test-pair-0"}
+{"id": "other-test-02", "text": "给我讲一个有关星星的故事", "label": "other", "split": "test", "group": "other-test-pair-0"}
+{"id": "other-test-03", "text": "准备毕业答辩应该注意什么", "label": "other", "split": "test", "group": "other-test-pair-1"}
+{"id": "other-test-04", "text": "解释一下Python列表推导式", "label": "other", "split": "test", "group": "other-test-pair-1"}
+{"id": "other-test-05", "text": "帮我安排明天的学习时间", "label": "other", "split": "test", "group": "other-test-pair-2"}
+{"id": "other-test-06", "text": "我想写一首描写秋天的诗", "label": "other", "split": "test", "group": "other-test-pair-2"}

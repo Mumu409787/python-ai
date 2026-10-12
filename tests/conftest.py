@@ -13,3 +13,4 @@ import os
 # 环境变量优先级高于 .env 文件，所以这里 setdefault 不会覆盖真实配置
 os.environ.setdefault("DEEPSEEK_API_KEY", "test-key-not-used")
 os.environ.setdefault("SILICONFLOW_API_KEY", "test-key-not-used")
+os.environ.setdefault("LANGFUSE_ENABLED", "false")

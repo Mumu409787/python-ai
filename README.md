@@ -1,229 +1,183 @@
-# python-ai
+# 知序 · python-ai
 
-Python + AI 方向的 RAG 检索问答系统。与本地另一个 Java 项目 `java-ai-rag` 功能对齐，
-并在其基础上补了 **Rerank 重排**、**Ragas 评测** 与 **MCP Server** 三块。
+基于 Python 的知识库问答项目：上传文本、PDF 或文字图片，系统完成解析/OCR、切片和向量化，结合 **BM25 + 向量混合检索、RRF 融合与 Rerank** 找到资料，再生成带来源和页码的回答。
 
-## 技术栈
+项目提供同源网页工作台、REST/SSE 接口及 MCP Server，并接入 PostgreSQL 会话检查点、Langfuse 问答追踪、Alembic 迁移和一个实际训练的本地问题分类器。适合学习和展示 Python 后端、RAG 与工程可靠性，不宣称生产级平台或大模型微调已经完成。
 
-| 层 | 选型 | 说明 |
-|---|---|---|
-| 包管理 | uv | 依赖锁在 `uv.lock` |
-| 解释器 | Python 3.14 | 备用 3.12 用 `uv python install` |
-| 对话模型 | DeepSeek `deepseek-flash` | 推理模型，会先输出思维链 |
-| 向量模型 | 硅基流动 `BAAI/bge-m3` | 1024 维 |
-| 向量库 | Qdrant | 端口 6335（Java 项目占 6333） |
-| 元数据库 | PostgreSQL 17 + pgvector | 端口 5432 |
-| 缓存 | Redis 7.4 | 端口 6380，存会话记忆 |
-| Web | FastAPI + sse-starlette | 流式用 SSE |
-| 编排 | LangChain（仅 LLM 封装） | 检索走原生 `qdrant-client` |
-| 评测 | Ragas 0.3.1 | 见 `evaluation/` |
+![知序工作台](docs/assets/workspace.png)
 
-## 快速开始
+## 可以做什么
 
-```bash
-# 1) 起依赖服务
-docker compose up -d && docker compose ps     # 三个 healthy
+| 能力 | 具体行为 |
+| --- | --- |
+| 文档管理 | 点击或拖拽上传；文件大小限制、SHA-256 去重、状态展示、删除文档及关联向量 |
+| 文字与 OCR | UTF-8 文本、原生 PDF、图片与扫描 PDF；扫描页本地识别，引用保留物理页码 |
+| 混合检索 | BM25 补充错误码/路径等词项召回，Qdrant 提供语义召回，RRF 按排名融合 |
+| 重排与降级 | bge-reranker 精排；超时、无效/不完整响应时回退有效候选 |
+| 追问改写 | 有历史的知识库追问补全主语，校验格式/标识，超时或不合格时用原问题；网页显示实际检索问题 |
+| 有据回答 | 命中片段进入上下文，返回文档/片段/页码；无命中固定拒答，不调用生成模型 |
+| 流式与普通聊天 | SSE 逐段输出或一次性返回；普通聊天不做知识库检索；中断/失败不保存半截回答 |
+| 会话记忆 | LangGraph 官方 PostgreSQL Checkpointer；同一编号跨服务重启读取，RAG/CHAT 隔离、轮次裁剪与 TTL |
+| 调用追踪 | Langfuse Cloud 记录问答、检索、生成及记忆读写；默认不上传完整正文，上报失败不阻断问答 |
+| 数据库迁移 | Alembic 显式管理业务表；旧库结构比对、备份后接管，启动只检查版本 |
+| 本地模型训练 | 字符 TF-IDF + 逻辑回归主题分类器；独立环境训练，JSON/NumPy 推理，低置信度显示未确定 |
+| MCP | 向兼容客户端提供知识库搜索、文档列表和受限本地文件入库工具 |
+| 故障恢复 | 同内容操作数据库锁、FAILED 状态、写入补偿和检索状态复查，避免失败/删除资料继续引用 |
 
-# 2) 配置密钥
-cp .env.example .env                          # 填 DeepSeek 与硅基流动的 key
+### 实际案例
 
-# 3) 自检
-uv run python scripts/check_env.py            # 模型 / 向量 / rerank / Qdrant 连通性
-uv run pytest                                 # 单元测试，不需要 key
+- **精确编号**：上传星链网关示例后问 `42901`，可找到触发限流及 `Retry-After` 建议。旧版仅向量召回在当次相同语料对照中无命中；不据此宣称所有题都更好。
+- **上下文追问**：先问“访问 Token 的有效期是多久？”，再问“那刷新用的呢？”，第二轮尝试补全 Refresh Token，答案依据为 7 天、一次使用。
+- **扫描资料**：上传 `data/samples/ocr/crane-mixed.pdf`，问 `CRANE-18743 对应的图像服务端口是多少？`，答案为 18743，引用第 2 页。
+- **持久记忆**：普通聊天保存代号后真正重启服务，同一会话、模式及有效期内仍可回忆；网页不持久化聊天正文，只保留编号。
+- **删除验收**：删除自己的临时资料，新建会话再问，引用不再包含该文档。其他重复文件仍可命中，不等于删除失败。
 
-# 4) 起服务
-uv run uvicorn python_ai.main:app --port 8000
+## 技术栈与数据流
 
-# 5) 端到端验证（另开终端）
-uv run python scripts/smoke_test.py           # 22 项
+| 层次 | 实际使用 |
+| --- | --- |
+| Python 与后端 | Python 3.14、FastAPI、Pydantic Settings、async/await、异步生成器、SSE |
+| 模型 API | DeepSeek 对话；硅基流动 BAAI/bge-m3 向量和 bge-reranker-v2-m3 重排 |
+| 检索 | Qdrant 原生客户端、rank_bm25 BM25Plus(delta=0)、RRF、LangChain 文本切分与 LLM 封装 |
+| 持久化 | PostgreSQL 17、SQLAlchemy/asyncpg、Alembic；psycopg 官方 saver 管检查点 |
+| 状态与追踪 | LangGraph StateGraph、PostgreSQL Checkpointer、Langfuse；Redis 保留可选旧记忆后端 |
+| 文件处理 | pypdf、PDFium/pypdfium2、Pillow、本地 Tesseract CLI |
+| 训练与推理 | 独立 Python 3.12 + scikit-learn；主环境 NumPy 读取 JSON 参数 |
+| 工程验证 | uv 锁依赖、Ruff、pytest、Node SSE 测试、Docker Compose、Ragas 历史质量评测 |
+| 网页与工具 | HTML/CSS/原生 JavaScript；MCP Python SDK |
+
+```mermaid
+flowchart LR
+    F[文件] --> P[原生文字或 OCR]
+    P --> C[按页切片]
+    C --> DB[(PostgreSQL 状态与片段)]
+    C --> E[Embedding] --> QD[(Qdrant)]
+    U[问题与会话] --> H[历史读取与可选改写]
+    H --> V[向量召回]
+    H --> B[BM25 召回]
+    QD --> V
+    DB --> B
+    V --> R[RRF 融合与重排]
+    B --> R
+    R --> A[有效资料生成或无命中拒答]
+    A --> O[答案与来源页码]
+    O --> M[(完成轮次检查点)]
 ```
 
-## 接口
+本地分类器辅助显示问题主题，不决定检索策略和事实答案。Langfuse 观察问答过程，不改变模型权重。PostgreSQL 容器包含 pgvector，但本项目实际向量检索用 Qdrant。
 
-与 Java 项目逐字对齐，同一前端可同时对接两边。
+## 快速开始（Windows PowerShell）
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/health` | 依赖健康检查 |
-| POST | `/api/documents` | 上传入库（字段名 `file`，上限 20MB，SHA-256 去重） |
-| GET | `/api/documents` | 文档列表 |
-| DELETE | `/api/documents/{id}` | 删除（连同向量） |
-| POST | `/api/chat?mode=RAG\|CHAT` | 非流式问答 |
-| POST/GET | `/api/chat/stream` | SSE 流式 |
+需要 Python 3.14、uv、Docker Desktop，以及对话/向量服务密钥。OCR 额外安装 Tesseract 与 `chi_sim`、`eng`；重训分类器才需要独立 Python 3.12。详细配置与故障处理集中在 [运维](运维/README.md)。
 
-**统一响应**：`{"code":0,"message":"成功","data":{...}}`，业务错误返回 HTTP 200 + `code != 0`。
+按 Windows 键搜索 **PowerShell** 并打开。下面命令输入在终端 `PS ...>` 后，每行回车，不在网页或 Python `>>>` 中输入。已有本机项目直接进入其目录，不必重新克隆：
 
-**SSE 事件协议**（无 `[DONE]` 哨兵）：
-
-```
-event: retrieval     data: [{...引用列表 JSON 数组...}]
-event: message       data: 裸文本片段          ← 逐 token，不是 JSON
-event: done          data: {"sessionId":"...","costMs":123}
-event: error         data: 中文错误文案
+```powershell
+git clone https://github.com/Mumu409787/python-ai.git
+Set-Location .\python-ai
+uv sync --locked
+if (-not (Test-Path -LiteralPath '.env')) { Copy-Item -LiteralPath '.env.example' -Destination '.env' }
+notepad .env
 ```
 
-## MCP Server：把检索能力暴露给任何 AI 客户端
+在编辑器中填写 `DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`；可选填写 Langfuse 同项目凭据和区域。不要覆盖已有 `.env`。打开 Docker Desktop，等引擎就绪后继续：
 
-除了 REST 接口，本项目还提供一个 **MCP Server**，让 Claude Code、Cursor、Codex、
-Claude Desktop 等**任何支持 MCP 的客户端直接调用这个知识库**。
-
-| 工具 | 作用 |
-|---|---|
-| `search_knowledge_base` | 语义检索（向量召回 + Rerank），返回最相关的片段 |
-| `list_documents` | 列出知识库里已入库的文档 |
-
-这是对外的**第三种接口**，与 `api/`（REST）、命令行平级。
-它本身**不实现任何检索逻辑** —— 业务逻辑的唯一归属地仍是 `retrieval.py` / `rag.py`，
-这个文件只做「把检索结果翻译成 MCP 工具返回值」这一件事。以后改检索只改下层，这里不用动。
-
-### 本地试跑
-
-```bash
-uv run python -m python_ai.mcp_server
+```powershell
+docker compose up -d
+docker compose ps
+.\.venv\Scripts\python.exe scripts/check_upgrade_env.py --services
+.\.venv\Scripts\python.exe scripts/migrate_db.py
+.\scripts\start_demo.ps1
 ```
 
-> stdio 传输下，正常表现是「卡住不动」—— 它在等客户端发来的协议帧，**不是坏了**。
+这是空库初始化步骤；**已有库升级前先执行 `scripts/backup_db.py`**。旧版未接管数据库按 [运行手册](运维/运行手册.md) 的结构校验流程处理，不直接 stamp。
 
-### 注册到 Claude Code
+看到 `Project is ready` 后打开 **http://127.0.0.1:8000/**，点击“载入星链网关示例”开始。接口文档为 **http://127.0.0.1:8000/docs**。本机 Docker CLI 未在 PATH 时，运行手册给出完整路径及恢复办法。
 
-编辑 `~/.claude.json`，在 `mcpServers` 里加：
+后台服务关闭终端/网页后仍运行。在项目目录的 **PowerShell** 停止或重启：
+
+```powershell
+.\scripts\stop_demo.ps1
+# 需要重新启动时，等待停止完成后执行
+.\scripts\start_demo.ps1
+```
+
+启动时会真实调用一次 embedding 校验集合维度；上传和完整问答也产生 API 用量。网页浏览、查列表、健康检查、本地分类及 OCR 本身不调用付费模型。全套环境检查不代表 Cloud 已鉴权或全部功能已经实测。
+
+默认依赖端口：PostgreSQL **5432**、Qdrant **6335/6336**、Redis **6380**、网页 **8000**。本机 `/compare` 可连接独立旧版 8001，但该冻结工程不包含在仓库里；未建立旧版不影响主项目。
+
+## 接口与 MCP
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| GET | `/api/health` | 服务健康和功能配置状态 |
+| POST | `/api/documents` | multipart 字段 file 上传，默认上限 20 MiB |
+| GET / DELETE | `/api/documents` / `/api/documents/{id}` | 文档列表 / 删除 |
+| POST | `/api/chat?mode=RAG` 或 `CHAT` | 非流式问答 |
+| POST / GET | `/api/chat/stream` | SSE 检索、正文、完成及错误事件 |
+| POST | `/api/chat/classify` | 仅本地主题分类，不调付费模型、不写会话 |
+
+统一响应 `{"code":0,"message":"成功","data":{...}}`，业务成功看 code，不能只看 HTTP 200。问答响应包含 `queryInfo`、`memorySaved`、`traceId/traceUrl`、`questionCategory`；引用包含文档、片段与 `sourcePage`。SSE 使用 retrieval/message/done/error，没有 `[DONE]` 哨兵，中途失败不伪造 done。
+
+MCP 在完成环境配置和迁移后独立启动，不需要先启动网页：
+
+```powershell
+.\.venv\Scripts\python.exe -m python_ai.mcp_server
+```
+
+提供 `search_knowledge_base`、`list_documents`、`ingest_file` 三个工具，复用原有业务逻辑。stdio 模式等待客户端协议输入时看起来停住属正常；日志必须写 stderr，不向 stdout 混入 print。兼容客户端配置示例（路径替换为自己的项目路径）：
 
 ```json
 {
   "mcpServers": {
     "python-ai-rag": {
-      "type": "stdio",
       "command": "D:/Projects/python-ai/.venv/Scripts/python.exe",
-      "args": ["-m", "python_ai.mcp_server"],
-      "env": {}
+      "args": ["-m", "python_ai.mcp_server"]
     }
   }
 }
 ```
 
-> 用 venv 里的 `python.exe` 而不是 `uv run`，省掉每次启动时 uv 的解析开销。
-> 换机器时把 `command` 换成对方机器上的 venv 路径即可。
+## 配置、验证与训练
 
-注册后重启客户端，就能直接说「查一下我的知识库里……」，它会自动调用这两个工具。
+常用配置均在 `.env.example` 和 `config.py`：`HYBRID_ENABLED`、`QUERY_REWRITE_ENABLED`、`RERANK_ENABLED` 可分别回退；默认 `MEMORY_BACKEND=langgraph`、`SESSION_MAX_TURNS=10`、`SESSION_TTL_SECONDS=3600`；旧 Redis 历史不自动迁移。默认 Langfuse 不捕获完整正文。OCR 默认 30 页、每页 2000 万像素、每页20秒/总60秒预算。修改后重启，详细限制见运维手册。
 
-### ⚠️ 一个必须知道的坑
+在项目目录 **PowerShell** 执行默认离线回归：
 
-**stdio 传输下绝对不能往 stdout 写任何东西** —— 日志、`print`、警告都不行。
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check src tests scripts evaluation alembic training/train_classifier.py
+.\.venv\Scripts\python.exe -m ruff format --check src tests scripts evaluation alembic training/train_classifier.py
+node --test tests/frontend_sse.test.mjs
+```
 
-MCP 用 stdout 传协议帧，混进去一行日志就会让客户端解析失败、连接直接断掉。
+默认服务/OCR实测跳过；开启对应标志的步骤见 [功能验收](运维/功能验收.md)，模型使用替身，不收费。2026-10-13 全服务/OCR回归 **156 passed**，前端 SSE **4 passed**；另有真实服务重启、Cloud 实收及网页 OCR/删除验收。详见 [验证记录](运维/验证记录.md)。
 
-代码里 `logging.basicConfig` 默认输出到 **stderr**，是安全的；改动时别手滑配成 stdout。
+分类器已训练并导出，体验网页无需重训。独立训练环境及数据、标签、参数与评估见 [training](training/README.md)。104条教学样本按64/16/24划分；测试集原始accuracy/macro-F1均1.00，阈值后接受22/24，但已经观察到域外误分类，不能称为生产准确率100%。大模型 LoRA 只完成条件评估，没有实际微调。
 
----
+历史 Ragas 报告见 [evaluation/report.md](evaluation/report.md)，记录指定语料/模型及有效样本数，**没有在新增分类/OCR后重跑**。不要将旧指标当作当前全部功能质量，也不为展示重新运行高用量评测。
 
-## 与 Java 项目的差异
+## 工程边界
 
-| 方面 | java-ai-rag | 本项目 |
-|---|---|---|
-| 向量写入时机 | 在 `@Transactional` 内 → 事务回滚会留孤儿向量（其 README 已列为已知缺陷） | **事务外**写入，任何一步失败都不产生孤儿向量 |
-| 同步问答检索 | 检索两次（手动拿引用 + 框架内部再检索） | **只检索一次**，命中同时用于引用和 prompt |
-| 删除向量 | 先从 chunk 表查 `vector_id` 再逐个删 | **Qdrant 原生 payload 过滤**，一步删净（同时保留 `vector_id` 供对账） |
-| 重排 | 无 | **Rerank**（`bge-reranker-v2-m3`） |
-| 评测 | 无 | **Ragas** 四项指标 |
-| 切片分隔符 | 只按换行/空格（中文会被硬切） | 补入中文句末标点 |
-| 拒答阈值 | 固定 `min-score=0.6` | 实测标定 `0.45` + **相对**截断（见下） |
-
-## 检索参数是怎么定的
-
-`retrieval_score_threshold = 0.45` **不是拍脑袋写的**，是在 `data/samples/star-link-spec.md`
-上实测标定的：
-
-| 查询类型 | 向量分数（最高） |
-|---|---|
-| 不相关（火锅店 / 天气 / 爬虫） | 0.31 / 0.38 / 0.39 |
-| 相关（认证 / 限流 / 灰度） | 0.58 / 0.60 / 0.53 |
-
-分界线在 0.45 附近。**换语料必须重新标定** —— 这个值随领域、文档风格、切片粒度都会变。
-
-> 顺带发现：Java 侧固定用 0.6，在这份语料上会把「认证用的 Token」（0.578）直接漏检。
-
-**Rerank 不做绝对阈值过滤**，只负责排序。原因是 `relevance_score` 与余弦相似度
-不是同一量纲，实测同一批候选能落在 `0.0 ~ 0.96`：初版设 `min_score=0.2`，
-正好把 0.195 的合法命中挡成了拒答。现在改成**相对 top1 的比例截断**
-（`rerank_relative_cutoff=0.1`），既能裁掉高分问题的拖尾噪声，又不会误杀低分问题。
-
-## 评测结果（Ragas）
-
-18 题评测集，完整报告见 `evaluation/report.md`：
-
-| 指标 | 分数 | 含义 |
-|---|---|---|
-| faithfulness | **0.9280** | 回答是否完全基于检索到的资料（有无幻觉） |
-| answer_relevancy | **0.9283** | 回答与问题的相关程度 |
-| context_precision | **1.0000** | 检索到的片段里有多少是真正有用的 |
-| context_recall | **1.0000** | 标准答案需要的信息，有多少被检索到 |
-
-复现：`uv run python -m evaluation.run_ragas`（约 150 秒，会调用较多 LLM）。
-原始分数落在 `evaluation/raw_scores.csv` —— 调整检索参数后可以离线重算，不必重跑评测。
+- PostgreSQL 与 Qdrant 没有分布式事务；采用锁、状态校验与补偿，故障瞬间不保证完全一致。
+- BM25 每次读取 DONE 片段，适合小型知识库，不是海量数据持久倒排索引。
+- 检索只对同一片段去重；不同格式/文件中的相似内容仍可能产生多个引用，不等于多个独立来源。
+- OCR 可能误认少见中文字和复杂版式，引用并不保证原始识别无误，关键数据应核对原件。
+- 检查点保存完成的会话，不是整条 RAG 工作流断点续跑/时间旅行；Langfuse 也不是完整运维监控平台。
+- 当前是本地演示与学习系统，未实现登录、租户隔离、生产鉴权、完整告警或负载容量验证；外网部署需另行设计。
 
 ## 目录
 
-```
-src/python_ai/
-  config.py       配置（pydantic-settings）
-  errors.py       业务异常与错误码
-  schemas.py      DTO + 统一响应体（对外 camelCase）
-  clients.py      LLM / Embedding / Qdrant / Redis 客户端装配
-  prompts.py      RAG_SYSTEM 等提示词
-  parsing.py      按扩展名解析（PDF 用 pypdf，文本强制 UTF-8）
-  chunking.py     递归切分 800/150 + SHA-256
-  embedding.py    批量向量化（每批 32，不传 dimensions）
-  vectorstore.py  Qdrant 封装（建集合 / 写入 / 检索 / 按文档删除）
-  retrieval.py    向量召回 → Rerank → 相对截断
-  llm.py          LangChain 对话模型 + 流式
-  memory.py       Redis 会话记忆
-  ingest.py       入库 / 删除编排
-  rag.py          问答编排（含 SSE 事件流）
-  repository.py   数据访问
-  db/             SQLAlchemy 模型与会话
-  api/            FastAPI 路由
-  mcp_server.py   MCP Server（把检索能力暴露给 AI 客户端）
-  main.py         应用入口与全局异常处理
-
-evaluation/       Ragas 评测集与脚本
-scripts/          check_env.py（连通性自检）/ smoke_test.py（端到端）
-data/samples/     测试语料
+```text
+src/python_ai/      解析、OCR、检索、问答、记忆、追踪、分类、REST/MCP 与网页
+tests/             离线回归、服务联调、OCR 及前端 SSE 测试
+alembic/           业务表迁移版本
+training/          独立训练环境、固定样本、导出模型与评估
+evaluation/        Ragas 与混合召回对照脚本/数据/历史报告
+scripts/           环境检查、迁移、备份、启动/停止与冒烟验证
+data/samples/      演示及回归所需测试语料
+docs/assets/       README 与验证记录使用的截图
+运维/              运行、排错、验收、版本对照和验证摘要
 ```
 
-## 踩过的坑
-
-- **FastAPI 默认的 OpenAPI 3.1 会让 Swagger UI 的文件上传框失效** —— Pydantic v2 把上传字段
-  生成为 `{"type": "string", "contentMediaType": "application/octet-stream"}`，而
-  **Swagger UI 只认 OpenAPI 3.0 的 `{"format": "binary"}`**。认不出来，它就把上传框渲染成
-  一个**普通文本框**（左边还标着 `string`），用户往里填什么都发不出真文件，服务端一律返回
-  **422 Validation Error**。接口本身没问题，是文档页渲染错了，非常隐蔽。
-  修法见 `main.py` 的 `_custom_openapi()`：把 openapi 版本降到 3.0.3 并改写字段。
-  > 注：给 `FastAPI(openapi_version="3.0.3")` 传参**没用** —— 版本号变了，但 Pydantic 生成的
-  > 字段描述不变，必须用 `app.openapi = _custom_openapi` 后处理 schema。
-
-- **Swagger UI 默认从 jsdelivr CDN 拉 JS/CSS，国内直连不通** —— 实测状态码 `000`，
-  挂代理也要 12 秒，`/docs` 会白屏。已把 `swagger-ui-bundle.min.js`（1.3MB）与
-  `swagger-ui.min.css` 下载到 `src/python_ai/static/`（取自国内镜像 bootcdn），
-  并在 `main.py` 里关掉 FastAPI 自带的 `docs_url`、自建离线可用的 `/docs`。
-  **升级 swagger-ui 版本时，这两个文件要一起换。**
-
-- **ruff 0.16.8 的 formatter 会把 `except (A, B):` 改写成 `except A, B:`**（Python 2 语法，
-  直接产生无效代码），而它自己的 linter 不报错。已规避：不写元组 `except`。
-- **`deepseek-flash` 是推理模型**：先吐 `reasoning_content` 再吐正文，两者共享 `max_tokens`。
-  给 16 会被思维链吃光、正文为空。LangChain 的 `ChatOpenAI` 已自动过滤掉思维链，
-  流式只需跳过空 chunk。
-- **ragas 0.3.1 依赖已被移除的 `langchain_community.chat_models.vertexai`**。
-  0.4.x 又和 `openai>=3.x` 冲突（它依赖的 `instructor` 要求 `openai<3`），所以只能
-  用 0.3.1 + 把 `langchain-community` 钉在 `<0.4` + 装 `pillow`。
-- **`bge-m3` 不能传 `dimensions`**，传了返回 400 / code 20015。
-- **Qdrant 集合维度必须在启动时真实探测**：非 OpenAI 官方模型自报的维度是错的
-  （会报 1536，实际 1024），拿错的值建集合会导致后续写入全部失败。
-
-## 下一步
-
-- [x] ~~写一个 MCP Server 暴露知识库检索~~ → **已完成**，见上方「MCP Server」章节
-- [ ] 混合检索（BM25 + 向量，用 `rank_bm25`）
-- [ ] 查询改写（Java 侧有实现但默认关，可直接移植）
-- [ ] 会话记忆接 LangGraph Checkpointer
-- [ ] Langfuse 接入（依赖已装，未接线）
-- [ ] Alembic 迁移替代 `create_all`
+个人知识总结单独保存到本机 `D:\study\python-ai.md`，不作为源码运行依赖。项目运行遇到的问题和对应修复，统一从 [运维目录](运维/README.md) 查找。

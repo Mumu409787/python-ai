@@ -10,24 +10,29 @@
       ↓
     事务2（标记 DONE）
 
-这样任何一步失败都不会产生「数据库没有、向量库却有」的孤儿向量。
-代价是多一次事务往返，换来的是可对账的状态机。
+失败时补偿清理向量；清理也失败时保留元数据，供同内容重试时再次清理。
+进程中断可能留下 PENDING 记录。检索只返回元数据状态为 DONE 的文档。
 """
 
 from __future__ import annotations
 
+import logging
 import time
+
+from starlette.concurrency import run_in_threadpool
 
 from . import repository as repo
 from .chunking import sha256_hex, split_text
 from .config import get_settings
 from .db.models import DocStatus, Document
-from .db.session import session_scope
+from .db.session import document_lock, session_scope
 from .embedding import embed_texts
 from .errors import BizError, ResultCode
-from .parsing import parse_document, source_type_of
+from .parsing import parse_pages, source_type_of
 from .schemas import DocumentOut, IngestResult
 from .vectorstore import VectorPoint, delete_by_doc, upsert_points
+
+logger = logging.getLogger(__name__)
 
 
 def _elapsed_ms(started: float) -> int:
@@ -61,14 +66,32 @@ async def ingest_document(filename: str, data: bytes) -> IngestResult:
         raise BizError(ResultCode.PARAM_INVALID, f"文件不能超过 {limit_mb} MB")
 
     doc_name = filename or "unnamed"
+    if len(doc_name) > 255:
+        raise BizError(ResultCode.PARAM_INVALID, "文件名不能超过 255 个字符")
     content_hash = sha256_hex(data)
 
     # ── 解析 + 切分：放在任何写库动作之前，失败就什么都不留下 ──
-    text = parse_document(doc_name, data)
-    pieces = split_text(text)
+    parsed = await run_in_threadpool(parse_pages, doc_name, data)
+    pieces, page_numbers = [], []
+    for page in parsed:
+        segments = await run_in_threadpool(split_text, page.text)
+        pieces.extend(segments)
+        page_numbers.extend([page.source_page] * len(segments))
     if not pieces:
         raise BizError(ResultCode.FILE_EMPTY, "文档切分后没有有效内容")
 
+    async with document_lock(content_hash):
+        return await _ingest_prepared(doc_name, data, content_hash, pieces, started, page_numbers)
+
+
+async def _ingest_prepared(
+    doc_name: str,
+    data: bytes,
+    content_hash: str,
+    pieces: list[str],
+    started: float,
+    page_numbers: list[int | None] | None = None,
+) -> IngestResult:
     # ── 事务1：建记录 + 存切片 ──
     async with session_scope() as session:
         existing = await repo.find_document_by_hash(session, content_hash)
@@ -84,6 +107,8 @@ async def ingest_document(filename: str, data: bytes) -> IngestResult:
         if existing is not None:
             # 上次失败（或中断在 PENDING）留下的残影 —— 内容指纹被它占着，
             # 不清掉的话这次插入会撞唯一约束
+            # 中断或部分写入后重试，先清向量；清理失败时保留旧记录供重试。
+            await delete_by_doc(existing.id)
             await repo.delete_document(session, existing)
             await session.flush()
 
@@ -95,9 +120,11 @@ async def ingest_document(filename: str, data: bytes) -> IngestResult:
             file_size=len(data),
         )
         chunks = await repo.add_chunks(session, doc.id, pieces)
+        for chunk, page in zip(chunks, page_numbers or [None] * len(chunks), strict=True):
+            chunk.source_page = page
         doc_id = doc.id
         # (chunk_id, vector_id, chunk_index) —— 出事务前把要用的值取出来
-        chunk_meta = [(c.id, c.vector_id, c.chunk_index) for c in chunks]
+        chunk_meta = [(c.id, c.vector_id, c.chunk_index, c.source_page) for c in chunks]
 
     # ── 事务外：向量化 + 写 Qdrant ──
     try:
@@ -111,22 +138,30 @@ async def ingest_document(filename: str, data: bytes) -> IngestResult:
                 chunk_id=chunk_id,
                 chunk_index=chunk_index,
                 content=content,
+                source_page=source_page,
             )
-            for (chunk_id, vector_id, chunk_index), vector, content in zip(
+            for (chunk_id, vector_id, chunk_index, source_page), vector, content in zip(
                 chunk_meta, vectors, pieces, strict=True
             )
         ]
         await upsert_points(points)
-    except Exception as exc:
         async with session_scope() as session:
-            await repo.mark_status(session, doc_id, DocStatus.FAILED, error_msg=str(exc)[:500])
+            await repo.mark_status(
+                session, doc_id, DocStatus.DONE, chunk_count=len(pieces), error_msg=None
+            )
+    except Exception as exc:
+        # Qdrant 可能已部分写入，或 DONE 提交失败，补偿清理。
+        # 清理失败时保留元数据，下次上传同内容会再次清理。
+        try:
+            await delete_by_doc(doc_id)
+        except Exception:
+            logger.exception("入库失败后的向量清理失败，doc_id=%s", doc_id)
+        try:
+            async with session_scope() as session:
+                await repo.mark_status(session, doc_id, DocStatus.FAILED, error_msg=str(exc)[:500])
+        except Exception:
+            logger.exception("记录入库失败状态失败，doc_id=%s", doc_id)
         raise
-
-    # ── 事务2：标记完成 ──
-    async with session_scope() as session:
-        await repo.mark_status(
-            session, doc_id, DocStatus.DONE, chunk_count=len(pieces), error_msg=None
-        )
 
     return IngestResult(
         doc_id=doc_id,
@@ -154,9 +189,11 @@ async def delete_document(doc_id: int) -> None:
         if doc is None:
             raise BizError(ResultCode.DOC_NOT_FOUND, f"文档不存在：{doc_id}")
 
-    await delete_by_doc(doc_id)
+        content_hash = doc.content_hash
 
-    async with session_scope() as session:
-        doc = await repo.get_document(session, doc_id)
-        if doc is not None:
-            await repo.delete_document(session, doc)
+    async with document_lock(content_hash):
+        await delete_by_doc(doc_id)
+        async with session_scope() as session:
+            doc = await repo.get_document(session, doc_id)
+            if doc is not None:
+                await repo.delete_document(session, doc)

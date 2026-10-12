@@ -1,0 +1,331 @@
+{
+  "dataSha256": "0164af1994ed8ce20ec6e5933eae02ecb062400a60a3b1547f272f17c4471f4e",
+  "seed": 42,
+  "datasetOrigin": "手工编写的教学样本，非生产数据",
+  "sizes": {
+    "train": {
+      "auth": 16,
+      "rate_limit": 16,
+      "failure": 16,
+      "other": 16
+    },
+    "validation": {
+      "auth": 4,
+      "rate_limit": 4,
+      "failure": 4,
+      "other": 4
+    },
+    "test": {
+      "auth": 6,
+      "rate_limit": 6,
+      "failure": 6,
+      "other": 6
+    }
+  },
+  "validationThresholdSearch": [
+    {
+      "threshold": 0.35,
+      "accepted": 16,
+      "accuracy": 0.875
+    },
+    {
+      "threshold": 0.4,
+      "accepted": 15,
+      "accuracy": 0.9333333333333333
+    },
+    {
+      "threshold": 0.45,
+      "accepted": 12,
+      "accuracy": 1.0
+    },
+    {
+      "threshold": 0.5,
+      "accepted": 11,
+      "accuracy": 1.0
+    },
+    {
+      "threshold": 0.55,
+      "accepted": 7,
+      "accuracy": 1.0
+    },
+    {
+      "threshold": 0.6,
+      "accepted": 4,
+      "accuracy": 1.0
+    },
+    {
+      "threshold": 0.7,
+      "accepted": 0,
+      "accuracy": null
+    },
+    {
+      "threshold": 0.8,
+      "accepted": 0,
+      "accuracy": null
+    }
+  ],
+  "selectedThreshold": 0.4,
+  "testAccuracy": 1.0,
+  "testMacroF1": 1.0,
+  "testCoverage": 0.9166666666666666,
+  "testAcceptedAccuracy": 1.0,
+  "classificationReport": {
+    "auth": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 6.0
+    },
+    "failure": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 6.0
+    },
+    "other": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 6.0
+    },
+    "rate_limit": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 6.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 24.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 24.0
+    }
+  },
+  "confusionMatrix": [
+    [
+      6,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      6,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      6,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      6
+    ]
+  ],
+  "predictions": [
+    {
+      "id": "auth-test-01",
+      "text": "访问 Token 失效以后应该怎样处理",
+      "expected": "auth",
+      "predicted": "auth",
+      "confidence": 0.6634208240933069,
+      "accepted": true
+    },
+    {
+      "id": "auth-test-02",
+      "text": "登录后拿到的令牌多久有效",
+      "expected": "auth",
+      "predicted": "auth",
+      "confidence": 0.6195267986055151,
+      "accepted": true
+    },
+    {
+      "id": "auth-test-03",
+      "text": "请说明 API Key 的轮换办法",
+      "expected": "auth",
+      "predicted": "auth",
+      "confidence": 0.6474504104047255,
+      "accepted": true
+    },
+    {
+      "id": "auth-test-04",
+      "text": "请求头没有鉴权凭证会怎样",
+      "expected": "auth",
+      "predicted": "auth",
+      "confidence": 0.31803605748291075,
+      "accepted": false
+    },
+    {
+      "id": "auth-test-05",
+      "text": "Refresh Token 能够重复提交吗",
+      "expected": "auth",
+      "predicted": "auth",
+      "confidence": 0.7513235988781145,
+      "accepted": true
+    },
+    {
+      "id": "auth-test-06",
+      "text": "身份认证需要传入哪些字段",
+      "expected": "auth",
+      "predicted": "auth",
+      "confidence": 0.5020012266070802,
+      "accepted": true
+    },
+    {
+      "id": "rate_limit-test-01",
+      "text": "网关报42901时客户端该做什么",
+      "expected": "rate_limit",
+      "predicted": "rate_limit",
+      "confidence": 0.4505134397622402,
+      "accepted": true
+    },
+    {
+      "id": "rate_limit-test-02",
+      "text": "应用每秒请求量有哪些限制",
+      "expected": "rate_limit",
+      "predicted": "rate_limit",
+      "confidence": 0.5364011235044085,
+      "accepted": true
+    },
+    {
+      "id": "rate_limit-test-03",
+      "text": "触发限流能直接连续重发吗",
+      "expected": "rate_limit",
+      "predicted": "rate_limit",
+      "confidence": 0.4921529502525042,
+      "accepted": true
+    },
+    {
+      "id": "rate_limit-test-04",
+      "text": "Retry-After 是秒还是分钟",
+      "expected": "rate_limit",
+      "predicted": "rate_limit",
+      "confidence": 0.6288101436356579,
+      "accepted": true
+    },
+    {
+      "id": "rate_limit-test-05",
+      "text": "QPS 达到配额后应采用什么策略",
+      "expected": "rate_limit",
+      "predicted": "rate_limit",
+      "confidence": 0.5642041494293654,
+      "accepted": true
+    },
+    {
+      "id": "rate_limit-test-06",
+      "text": "怎样给频繁请求增加退避时间",
+      "expected": "rate_limit",
+      "predicted": "rate_limit",
+      "confidence": 0.4549677156724964,
+      "accepted": true
+    },
+    {
+      "id": "failure-test-01",
+      "text": "服务器给出503的时候怎么排查",
+      "expected": "failure",
+      "predicted": "failure",
+      "confidence": 0.7516997469458505,
+      "accepted": true
+    },
+    {
+      "id": "failure-test-02",
+      "text": "网关等待上游响应多久会超时",
+      "expected": "failure",
+      "predicted": "failure",
+      "confidence": 0.5382115186878923,
+      "accepted": true
+    },
+    {
+      "id": "failure-test-03",
+      "text": "数据库连接异常如何查看日志",
+      "expected": "failure",
+      "predicted": "failure",
+      "confidence": 0.750348069369878,
+      "accepted": true
+    },
+    {
+      "id": "failure-test-04",
+      "text": "上传PDF提示解析失败怎么办",
+      "expected": "failure",
+      "predicted": "failure",
+      "confidence": 0.5714853376800875,
+      "accepted": true
+    },
+    {
+      "id": "failure-test-05",
+      "text": "遇到500内部错误应如何定位",
+      "expected": "failure",
+      "predicted": "failure",
+      "confidence": 0.629062728104918,
+      "accepted": true
+    },
+    {
+      "id": "failure-test-06",
+      "text": "服务崩溃造成连接中断怎么恢复",
+      "expected": "failure",
+      "predicted": "failure",
+      "confidence": 0.734397534120636,
+      "accepted": true
+    },
+    {
+      "id": "other-test-01",
+      "text": "你好很高兴认识你",
+      "expected": "other",
+      "predicted": "other",
+      "confidence": 0.6012119823953094,
+      "accepted": true
+    },
+    {
+      "id": "other-test-02",
+      "text": "给我讲一个有关星星的故事",
+      "expected": "other",
+      "predicted": "other",
+      "confidence": 0.5704964294319852,
+      "accepted": true
+    },
+    {
+      "id": "other-test-03",
+      "text": "准备毕业答辩应该注意什么",
+      "expected": "other",
+      "predicted": "other",
+      "confidence": 0.3062312030671029,
+      "accepted": false
+    },
+    {
+      "id": "other-test-04",
+      "text": "解释一下Python列表推导式",
+      "expected": "other",
+      "predicted": "other",
+      "confidence": 0.5749859387899654,
+      "accepted": true
+    },
+    {
+      "id": "other-test-05",
+      "text": "帮我安排明天的学习时间",
+      "expected": "other",
+      "predicted": "other",
+      "confidence": 0.7413670591256702,
+      "accepted": true
+    },
+    {
+      "id": "other-test-06",
+      "text": "我想写一首描写秋天的诗",
+      "expected": "other",
+      "predicted": "other",
+      "confidence": 0.6467006079984433,
+      "accepted": true
+    }
+  ]
+}

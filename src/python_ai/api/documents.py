@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, UploadFile
 
+from ..config import get_settings
 from ..errors import BizError, ResultCode
 from ..ingest import delete_document, ingest_document, list_documents
 from ..schemas import DocumentOut, IngestResult, Result
@@ -16,7 +17,10 @@ router = APIRouter(prefix="/api/documents", tags=["documents"])
 @router.post("", response_model=Result[IngestResult])
 async def upload(file: Annotated[UploadFile, File()]) -> Result[IngestResult]:
     """上传并入库。**字段名必须是 `file`**（与 Java 侧一致）。"""
-    data = await file.read()
+    try:
+        data = await file.read(get_settings().max_upload_bytes + 1)
+    finally:
+        await file.close()
     if not data:
         raise BizError(ResultCode.FILE_EMPTY, "上传的文件是空的")
     result = await ingest_document(file.filename or "unnamed", data)

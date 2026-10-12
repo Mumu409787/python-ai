@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>知序 · 双版本实测</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; color: #183430; background: #f5f6ef; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { padding: 26px 32px; background: #142b29; color: #fff; }
+    .eyebrow { color: #a8dcbd; font-size: 12px; letter-spacing: .15em; }
+    h1 { font-size: clamp(22px, 3vw, 32px); margin: 10px 0; }
+    header p { max-width: 1000px; line-height: 1.8; margin-bottom: 0; color: #d2e1d9; }
+    main { padding: 24px; }
+    .guide { background: white; border: 1px solid #dfe5db; border-radius: 14px; padding: 20px 24px; margin-bottom: 22px; line-height: 1.8; }
+    .guide p { margin: 6px 0; }
+    code { background: #edf4ec; border-radius: 5px; padding: 3px 7px; }
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    article { min-width: 0; border: 1px solid #dfe5db; background: white; border-radius: 14px; overflow: hidden; }
+    .label { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 18px 22px; }
+    .old { background: #eeede6; }
+    .new { background: #e0f2e4; }
+    h2 { font-size: 19px; margin: 0 0 6px; }
+    .label p { font-size: 13px; margin: 0; line-height: 1.7; }
+    a { color: #246747; text-underline-offset: 4px; }
+    .label a { font-size: 13px; white-space: nowrap; }
+    iframe { display: block; border: 0; width: 100%; height: 1050px; background: #f5f6ef; }
+    .note { line-height: 1.8; font-size: 13px; color: #52655b; margin: 18px 0 0; }
+    @media (max-width: 1000px) { .columns { grid-template-columns: 1fr; } header { padding: 24px; } main { padding: 16px; } iframe { height: 980px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">ZHI XU / TWO VERSIONS, REAL ANSWERS</div>
+    <h1>先用同一个问题，看见优化的区别。</h1>
+    <p>两侧都是独立运行的真实项目。左侧固定为加入 BM25 与查询改写之前的检索行为；右侧继续开发。打开本页不会自动提问。</p>
+  </header>
+  <main>
+    <section class="guide" aria-label="对照步骤">
+      <p><strong>① 对比错误码：</strong>两边均选「知识库问答」，各点一次「新会话」，分别输入 <code>42901</code>，比较回答与来源。</p>
+      <p><strong>② 对比追问：</strong>两边各开新会话，先问 <code>访问 Token 的有效期是多久？</code>，等回答结束，再问 <code>那刷新用的呢？</code>。新版还会显示实际检索问题。</p>
+      <p><strong>③ 看结果：</strong>核对答案事实、是否引用正确片段、是否拒答。两个版本都保留向量检索、重排与生成时的会话记忆。</p>
+      <p>页面空白或连接失败时，按 <a href="/demo/comparison-guide" target="_blank" rel="noopener">双版本启动与验收说明</a> 启动对应服务；也可以用下方链接分别打开大窗口。本仓库不包含本机冻结旧版，未建立旧版时仅使用右侧主项目。</p>
+    </section>
+    <div class="columns">
+      <article>
+        <div class="label old"><div><h2>优化前 · 固定对照版</h2><p>python-ai-baseline · 8001<br>向量召回 + 重排 · 原问题直接检索 · 固定资料</p></div><a href="http://127.0.0.1:8001/#workspace" target="_blank" rel="noopener">独立打开 ↗</a></div>
+        <iframe title="优化前固定对照版" src="http://127.0.0.1:8001/#workspace"></iframe>
+      </article>
+      <article>
+        <div class="label new"><div><h2>优化后 · 持续优化版</h2><p>python-ai · 8000<br>BM25 + 向量 + RRF + 重排 · 支持追问改写</p></div><a href="http://127.0.0.1:8000/#workspace" target="_blank" rel="noopener">独立打开 ↗</a></div>
+        <iframe title="优化后持续优化版" src="http://127.0.0.1:8000/#workspace"></iframe>
+      </article>
+    </div>
+    <p class="note">建立对照时，两份知识库内容与向量相同，模型和非目标检索参数相同。对照版的资料已锁定；新版以后新增或删除资料不会同步到它。若新版资料发生变化，应先核对语料再判断效果。此次没有独立的历史提交，因此对照版由当前工程还原此前检索行为，保留既有稳定性修复，并增加版本标识与资料保护；不是原始未修复项目的历史快照。</p>
+  </main>
+</body>
+</html>

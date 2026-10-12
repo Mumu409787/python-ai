@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -25,7 +26,7 @@ class CamelModel(BaseModel):
 class Result[T](CamelModel):
     """统一响应体，对应 Java 的 `Result<T>(code, message, data)`。
 
-    `data` 为 None 时由 FastAPI 的 `response_model_exclude_none=True` 省略。
+    失败时 `data` 为 None；调用方通过 code 判断是否成功。
     """
 
     code: int = 0
@@ -61,15 +62,39 @@ class ChatRequest(CamelModel):
     session_id: str | None = None
     use_rag: bool | None = None
 
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("问题不能只包含空白字符")
+        return value
+
 
 class RetrievalHit(CamelModel):
-    """一条检索命中。流式场景下 `score` 为 None（对齐 Java 的行为）。"""
+    """一条检索命中，同步和流式均返回分数。"""
 
     chunk_id: int | None = None
     doc_id: int | None = None
     doc_name: str | None = None
     content: str = ""
     score: float | None = None
+    score_kind: str = "vector"
+    source_page: int | None = None
+
+
+class QueryInfo(CamelModel):
+    """公开本次检索问题与改写结果，不暴露历史正文。"""
+
+    original_question: str
+    retrieval_query: str
+    rewrite_status: Literal["disabled", "no_history", "unchanged", "rewritten", "fallback"]
+
+
+class QuestionCategory(CamelModel):
+    status: Literal["classified", "low_confidence", "disabled", "unavailable"]
+    label: str | None = None
+    name: str | None = None
+    confidence: float | None = None
 
 
 class ChatResponse(CamelModel):
@@ -78,6 +103,11 @@ class ChatResponse(CamelModel):
     hits: list[RetrievalHit] = Field(default_factory=list)
     cost_ms: int = 0
     used_rag: bool = True
+    query_info: QueryInfo | None = None
+    memory_saved: bool = True
+    trace_id: str | None = None
+    trace_url: str | None = None
+    question_category: QuestionCategory | None = None
 
 
 class IngestResult(CamelModel):
@@ -105,3 +135,8 @@ class DonePayload(CamelModel):
 
     session_id: str
     cost_ms: int
+    query_info: QueryInfo | None = None
+    memory_saved: bool = True
+    trace_id: str | None = None
+    trace_url: str | None = None
+    question_category: QuestionCategory | None = None

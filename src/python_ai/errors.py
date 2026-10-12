@@ -81,6 +81,8 @@ def friendly_llm_message(exc: Exception) -> str:
 
     与 Java `ChatService.friendlyMessage()` 的映射保持一致。
     """
+    if isinstance(exc, BizError):
+        return exc.message
     text = str(exc).lower()
     if "timeout" in text or "timed out" in text:
         return "模型响应超时，请重试或换一个更短的问题"
@@ -88,4 +90,19 @@ def friendly_llm_message(exc: Exception) -> str:
         return "模型 API Key 无效或已过期，请检查 .env 配置"
     if "429" in text or "rate limit" in text:
         return "模型调用被限流，请稍后重试"
-    return f"对话失败：{exc}"
+    return "模型调用失败，请稍后重试"
+
+
+def llm_error(exc: Exception) -> BizError:
+    """同步和流式调用共享错误码，不暴露供应商响应正文。"""
+    if isinstance(exc, BizError):
+        return exc
+    message = friendly_llm_message(exc)
+    code = ResultCode.LLM_CALL_FAILED
+    status = getattr(exc, "status_code", None)
+    if status == 429 or "限流" in message:
+        code = ResultCode.LLM_RATE_LIMITED
+    elif isinstance(exc, TimeoutError) or "超时" in message:
+        code = ResultCode.LLM_TIMEOUT
+        message = "模型响应超时，请重试或换一个更短的问题"
+    return BizError(code, message, retryable=True)

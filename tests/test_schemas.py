@@ -31,6 +31,8 @@ def test_retrieval_hit_serializes_camel_case() -> None:
         "docName": "a.md",
         "content": "x",
         "score": 0.9,
+        "scoreKind": "vector",
+        "sourcePage": None,
     }
 
 

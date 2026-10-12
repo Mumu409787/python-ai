@@ -44,6 +44,7 @@ async def health() -> Result[dict]:
     settings = get_settings()
     pg, qd, rd = await asyncio.gather(_check_postgres(), _check_qdrant(), _check_redis())
     payload = {
+        "projectVariant": "current",
         "postgres": pg,
         "qdrant": qd,
         "redis": rd,
@@ -51,5 +52,14 @@ async def health() -> Result[dict]:
         "chatModel": settings.deepseek_model,
         "embeddingModel": settings.embedding_model,
         "rerankEnabled": settings.rerank_enabled,
+        "hybridEnabled": settings.hybrid_enabled,
+        "queryRewriteEnabled": settings.query_rewrite_enabled,
+        "memoryBackend": settings.memory_backend,
+        "classifierEnabled": settings.classifier_enabled,
+        "langfuseConfigured": bool(
+            settings.langfuse_enabled
+            and settings.langfuse_public_key
+            and settings.langfuse_secret_key
+        ),
     }
     return Result.ok(payload)

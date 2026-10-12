@@ -62,5 +62,6 @@ class Chunk(Base):
     # Qdrant 里的 point id（UUID 字符串），删除与对账用
     vector_id: Mapped[str] = mapped_column(String(64))
     content: Mapped[str] = mapped_column(Text)
+    source_page: Mapped[int | None]
 
     document: Mapped[Document] = relationship(back_populates="chunks")

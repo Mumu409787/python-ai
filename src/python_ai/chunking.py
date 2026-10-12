@@ -46,8 +46,8 @@ def split_text(
     """递归切分，返回非空的片段列表。"""
     s = get_settings()
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size or s.chunk_size,
-        chunk_overlap=chunk_overlap or s.chunk_overlap,
+        chunk_size=chunk_size if chunk_size is not None else s.chunk_size,
+        chunk_overlap=chunk_overlap if chunk_overlap is not None else s.chunk_overlap,
         separators=SEPARATORS,
         keep_separator=True,
         strip_whitespace=True,
