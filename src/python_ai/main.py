@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import checkpoint_memory
-from .api import chat, documents, health
+from .api import chat, documents, health, integration
 from .clients import close_clients
 from .config import PROJECT_ROOT, get_settings
 from .db.session import dispose_db, init_db
@@ -127,6 +127,7 @@ app.openapi = _custom_openapi  # type: ignore[method-assign]
 app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(documents.router)
+app.include_router(integration.router)
 
 # ── 接口文档页：静态资源全部本地化，不依赖任何 CDN ──
 

@@ -22,6 +22,7 @@
 | 数据库迁移 | Alembic 显式管理业务表；旧库结构比对、备份后接管，启动只检查版本 |
 | 本地模型训练 | 字符 TF-IDF + 逻辑回归主题分类器；独立环境训练，JSON/NumPy 推理，低置信度显示未确定 |
 | MCP | 向兼容客户端提供知识库搜索、文档列表和受限本地文件入库工具 |
+| 项目间问答接入 | `zhixu.qa.v1` 版本化 HTTP 接口、Bearer 密钥、按项目区分会话；返回答案、来源页码和追踪信息 |
 | 故障恢复 | 同内容操作数据库锁、FAILED 状态、写入补偿和检索状态复查，避免失败/删除资料继续引用 |
 
 ### 实际案例
@@ -104,7 +105,35 @@ docker compose ps
 
 启动时会真实调用一次 embedding 校验集合维度；上传和完整问答也产生 API 用量。网页浏览、查列表、健康检查、本地分类及 OCR 本身不调用付费模型。全套环境检查不代表 Cloud 已鉴权或全部功能已经实测。
 
-默认依赖端口：PostgreSQL **5432**、Qdrant **6335/6336**、Redis **6380**、网页 **8000**。本机 `/compare` 可连接独立旧版 8001，但该冻结工程不包含在仓库里；未建立旧版不影响主项目。
+默认依赖端口：PostgreSQL **5432**、Qdrant **6335/6336**、Redis **6380**、网页 **8000**。8001 仅用于此前 BM25/查询改写的可选旧版对照，不是运行依赖。本机 `python-ai-baseline` 已于 2026-10-13 清理，`/compare` 中的旧版窗口不再可用；[历史对照记录](运维/版本对照.md)保留，当前知序正常使用。
+
+## 作为其他项目的问答功能
+
+知序可以独立运行，由其他项目的后端通过 HTTP 调用，不必复制本项目源码或配置 MCP。
+
+- **接口标识**：`zhixu.qa.v1`，同时出现在响应 JSON 的 `serviceId` 与 `X-Zhixu-Service` 响应头。
+- **服务发现**：`GET /api/integration/v1/info`，不调用模型。
+- **问答入口**：`POST /api/integration/v1/ask`；Bearer 接入密钥；支持 `RAG`、`CHAT`，非流式。
+- **返回内容**：答案、引用片段及页码、会话编号、无依据状态、记忆保存状态与可选追踪信息。
+- **文档**：[问答接口接入文档](docs/问答接口接入.md)；机器契约 `/openapi.json`，交互文档 `/docs` 的 `zhixu.qa.v1` 分组。
+
+当前本机目录为 `D:\Projects\知序`。在该目录的 **PowerShell** 中执行以下命令，为本机 `.env` 生成接入密钥（不打印、不覆盖已有合格密钥）：
+
+```powershell
+.\.venv\Scripts\python.exe scripts/setup_integration.py
+```
+
+随后按运行手册重启服务。服务端 `INTEGRATION_API_KEY` 留空时，仅禁用新的外部问答入口。调用方后端保存同一密钥，再发送：
+
+```http
+POST /api/integration/v1/ask
+Authorization: Bearer <知序接入密钥>
+Content-Type: application/json
+
+{"clientId":"my-study-app","message":"42901 表示什么？","mode":"RAG"}
+```
+
+保存返回的 `data.sessionId` 用于追问。`clientId` 只隔离会话命名空间，**本实例的知识库仍共享**；这是面向可信项目后端的接入方式。新密钥不会自动保护旧网页和资料管理接口，公开部署应只转发需要的路径并配置 HTTPS 与访问控制。完整 Python 示例、会话规则、错误排查、部署边界和 Agent 接入清单均见接入文档。
 
 ## 接口与 MCP
 
@@ -116,8 +145,10 @@ docker compose ps
 | POST | `/api/chat?mode=RAG` 或 `CHAT` | 非流式问答 |
 | POST / GET | `/api/chat/stream` | SSE 检索、正文、完成及错误事件 |
 | POST | `/api/chat/classify` | 仅本地主题分类，不调付费模型、不写会话 |
+| GET | `/api/integration/v1/info` | 外部问答服务发现与标识，不调模型 |
+| POST | `/api/integration/v1/ask` | 受 Bearer 密钥保护的版本化项目间问答 |
 
-统一响应 `{"code":0,"message":"成功","data":{...}}`，业务成功看 code，不能只看 HTTP 200。问答响应包含 `queryInfo`、`memorySaved`、`traceId/traceUrl`、`questionCategory`；引用包含文档、片段与 `sourcePage`。SSE 使用 retrieval/message/done/error，没有 `[DONE]` 哨兵，中途失败不伪造 done。
+原有接口统一响应 `{"code":0,"message":"成功","data":{...}}`，业务成功看 code，不能只看 HTTP 200。新外部接口增加 `serviceId/apiVersion/requestId`，使用 HTTP 错误状态，详见接入文档。问答响应包含 `queryInfo`、`memorySaved`、`traceId/traceUrl`、`questionCategory`；引用包含文档、片段与 `sourcePage`。SSE 使用 retrieval/message/done/error，没有 `[DONE]` 哨兵，中途失败不伪造 done。
 
 MCP 在完成环境配置和迁移后独立启动，不需要先启动网页：
 
@@ -153,6 +184,8 @@ node --test tests/frontend_sse.test.mjs
 
 默认服务/OCR实测跳过；开启对应标志的步骤见 [功能验收](运维/功能验收.md)，模型使用替身，不收费。2026-10-13 全服务/OCR回归 **156 passed**，前端 SSE **4 passed**；另有真实服务重启、Cloud 实收及网页 OCR/删除验收。详见 [验证记录](运维/验证记录.md)。
 
+新增外部问答接口后的默认回归为 **179 passed / 9 skipped**，其中接口专项 **32 passed**；已启动真实服务验证服务发现、401/422 与一次 `42901` 问答。历史全服务/OCR成绩与本次默认回归分开记录，不把本次跳过项算作通过。
+
 分类器已训练并导出，体验网页无需重训。独立训练环境及数据、标签、参数与评估见 [training](training/README.md)。104条教学样本按64/16/24划分；测试集原始accuracy/macro-F1均1.00，阈值后接受22/24，但已经观察到域外误分类，不能称为生产准确率100%。大模型 LoRA 只完成条件评估，没有实际微调。
 
 历史 Ragas 报告见 [evaluation/report.md](evaluation/report.md)，记录指定语料/模型及有效样本数，**没有在新增分类/OCR后重跑**。不要将旧指标当作当前全部功能质量，也不为展示重新运行高用量评测。
@@ -177,6 +210,7 @@ evaluation/        Ragas 与混合召回对照脚本/数据/历史报告
 scripts/           环境检查、迁移、备份、启动/停止与冒烟验证
 data/samples/      演示及回归所需测试语料
 docs/assets/       README 与验证记录使用的截图
+docs/问答接口接入.md  项目间问答契约、Python 示例、错误处理与 Agent 接入清单
 运维/              运行、排错、验收、版本对照和验证摘要
 ```
 

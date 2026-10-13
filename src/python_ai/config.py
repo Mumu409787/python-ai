@@ -11,7 +11,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -123,8 +123,17 @@ class Settings(BaseSettings):
     # ── 上传限制（对齐 Java：20MB）──
     max_upload_bytes: int = Field(default=20 * 1024 * 1024, gt=0)
 
+    # Trusted server-to-server QA; an empty key disables only the external ask endpoint.
+    integration_api_key: SecretStr = SecretStr("")
+    integration_timeout_seconds: float = Field(default=180.0, gt=0, le=600)
+
     @model_validator(mode="after")
     def validate_chunking(self) -> Settings:
+        integration_key = self.integration_api_key.get_secret_value()
+        if integration_key and (
+            len(integration_key) < 32 or integration_key != integration_key.strip()
+        ):
+            raise ValueError("integration_api_key 至少 32 字符，且不能含首尾空白")
         if self.memory_backend not in {"langgraph", "redis"}:
             raise ValueError("memory_backend 必须是 langgraph 或 redis")
         if self.chunk_overlap >= self.chunk_size:
